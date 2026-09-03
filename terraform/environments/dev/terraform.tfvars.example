@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars (gitignored — never commit tfvars).
+aws_region  = "eu-central-1"
+environment = "dev"
+project     = "petclinic"

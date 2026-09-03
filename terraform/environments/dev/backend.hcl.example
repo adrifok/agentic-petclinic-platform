@@ -1,0 +1,3 @@
+# Copy to backend.hcl (gitignored) and fill in the bucket name printed by
+# scripts/bootstrap-state.sh, then run: terraform init -backend-config=backend.hcl
+bucket = "petclinic-terraform-state-ACCOUNT_ID"
