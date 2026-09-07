@@ -99,3 +99,32 @@ variable "eks_cluster_log_retention_days" {
   type        = number
   default     = 30
 }
+
+# --- ECR (see docs/technical-spec.md#ecr-container-registry) ---
+
+variable "ecr_service_names" {
+  description = "Microservice names for ECR repositories, one repo each under petclinic-dev/."
+  type        = list(string)
+  default = [
+    "config-server",
+    "discovery-server",
+    "api-gateway",
+    "customers-service",
+    "visits-service",
+    "vets-service",
+    "genai-service",
+    "admin-server",
+  ]
+}
+
+variable "ecr_image_tag_mutability" {
+  description = "ECR tag mutability for dev (MUTABLE — allows re-pushing a tag during development)."
+  type        = string
+  default     = "MUTABLE"
+}
+
+variable "ecr_force_delete" {
+  description = "Allow terraform destroy to remove dev ECR repositories even if they still contain images. True in dev only — this environment is torn down/rebuilt regularly to control cost (see scripts/stop-env.sh, scripts/start-env.sh); the module itself defaults to false."
+  type        = bool
+  default     = true
+}

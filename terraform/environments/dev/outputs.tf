@@ -102,3 +102,13 @@ output "eks_addon_versions" {
     aws_ebs_csi_driver = module.eks.ebs_csi_addon_version
   }
 }
+
+output "ecr_repository_urls" {
+  description = "Dev ECR repository URLs, keyed by service name."
+  value       = module.ecr.repository_urls
+}
+
+output "ecr_repository_arns" {
+  description = "Dev ECR repository ARNs, keyed by service name."
+  value       = module.ecr.repository_arns
+}

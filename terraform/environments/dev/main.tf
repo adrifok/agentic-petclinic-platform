@@ -37,3 +37,16 @@ module "eks" {
   node_max_size       = var.eks_node_max_size
   node_desired_size   = var.eks_node_desired_size
 }
+
+# Implements PETPLAT-20 (wire ECR into dev). One repo per service, MUTABLE
+# tags (dev only — see docs/technical-spec.md#ecr-container-registry).
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project     = var.project
+  environment = var.environment
+
+  service_names        = var.ecr_service_names
+  image_tag_mutability = var.ecr_image_tag_mutability
+  force_delete         = var.ecr_force_delete
+}
