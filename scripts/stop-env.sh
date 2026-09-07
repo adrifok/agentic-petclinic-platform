@@ -101,10 +101,12 @@ else
   if [[ "${CURRENT_DESIRED}" == "0" ]]; then
     echo "  -> Node group already at 0 nodes. No action needed."
   else
+    # maxSize=4 matches eks_node_max_size in terraform/environments/{env}/variables.tf
+    # — a mismatch here would drift back on the next terraform apply.
     aws eks update-nodegroup-config \
       --cluster-name "${CLUSTER_NAME}" \
       --nodegroup-name "${NODEGROUP_NAME}" \
-      --scaling-config minSize=0,maxSize=3,desiredSize=0 \
+      --scaling-config minSize=0,maxSize=4,desiredSize=0 \
       --region "${REGION}" > /dev/null
     echo "  -> Scaled to 0. Nodes will terminate within a few minutes."
   fi

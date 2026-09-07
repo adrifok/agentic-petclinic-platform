@@ -14,11 +14,15 @@ set -euo pipefail
 
 REGION="${AWS_DEFAULT_REGION:-eu-central-1}"
 
-# Default node counts (adjust if your Terraform uses different values)
+# Node counts must match terraform/environments/{env}/variables.tf
+# (eks_node_min_size / eks_node_max_size / eks_node_desired_size) or
+# terraform apply will drift the scaling config back on the next run.
+DEV_MIN_NODES=2
 DEV_DESIRED_NODES=2
-PROD_DESIRED_NODES=3
-DEV_MAX_NODES=3
-PROD_MAX_NODES=5
+DEV_MAX_NODES=4
+PROD_MIN_NODES=2
+PROD_DESIRED_NODES=2
+PROD_MAX_NODES=4
 
 usage() {
   echo "Usage: $0 <environment>"
@@ -41,9 +45,11 @@ if [[ "$ENV" != "dev" && "$ENV" != "prod" ]]; then
 fi
 
 if [[ "$ENV" == "dev" ]]; then
+  MIN_NODES=${DEV_MIN_NODES}
   DESIRED_NODES=${DEV_DESIRED_NODES}
   MAX_NODES=${DEV_MAX_NODES}
 else
+  MIN_NODES=${PROD_MIN_NODES}
   DESIRED_NODES=${PROD_DESIRED_NODES}
   MAX_NODES=${PROD_MAX_NODES}
 fi
@@ -125,7 +131,7 @@ else
     aws eks update-nodegroup-config \
       --cluster-name "${CLUSTER_NAME}" \
       --nodegroup-name "${NODEGROUP_NAME}" \
-      --scaling-config "minSize=1,maxSize=${MAX_NODES},desiredSize=${DESIRED_NODES}" \
+      --scaling-config "minSize=${MIN_NODES},maxSize=${MAX_NODES},desiredSize=${DESIRED_NODES}" \
       --region "${REGION}" > /dev/null
     echo "  -> Scaling to ${DESIRED_NODES} nodes. Waiting for nodes to join..."
     echo "     (This typically takes 2-5 minutes)"
