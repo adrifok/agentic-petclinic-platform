@@ -187,7 +187,7 @@ Four security groups per environment. Security groups are the **primary access c
 | Parameter | Dev | Prod |
 |-----------|-----|------|
 | Cluster Name | `petclinic-dev` | `petclinic-prod` |
-| Kubernetes Version | `1.29` | `1.29` |
+| Kubernetes Version | `1.36`\* | `1.36`\* |
 | API Server Endpoint | Public | Public |
 | Authentication Mode | `API_AND_CONFIG_MAP` | `API_AND_CONFIG_MAP` |
 | Cluster Logging | `api`, `audit`, `authenticator` | `api`, `audit`, `authenticator` |
@@ -215,9 +215,11 @@ Created from EKS cluster identity issuer URL. Required for IRSA (IAM Roles for S
 | Max Size | 4 | 4 |
 | Desired Size | 2 | 2 |
 | Disk Size | 20 GB | 20 GB |
-| AMI Type | `AL2_ARM_64` | `AL2_ARM_64` |
+| AMI Type | `AL2023_ARM_64_STANDARD`\* | `AL2023_ARM_64_STANDARD`\* |
 
 > **Cost note:** t4g.small instances (2 vCPU, 2 GiB) are eligible for the AWS Graviton free trial (750 hrs/month until Dec 2026). Both dev and prod use identical sizing — this is a cost optimization for a learning project. In production, you would use larger instances (e.g., m7g.xlarge). Students should understand this trade-off.
+>
+> \* **Updated from the original spec** (`1.29` / `AL2_ARM_64`): by the time this was built, EKS no longer accepted 1.29 for new clusters (past end of support) and AL2 has no ARM64 build for current Kubernetes versions (AWS deprecated AL2 EKS-optimized AMIs in favor of AL2023). `1.36` is EKS's current standard-support default — picked over the still-creatable 1.31-1.33 because those are in extended support, which EKS bills extra for per cluster-hour.
 
 ### Node IAM Role Policies
 
