@@ -128,3 +128,47 @@ variable "ecr_force_delete" {
   type        = bool
   default     = true
 }
+
+# --- RDS (see docs/technical-spec.md#rds-database) ---
+
+variable "rds_instance_class" {
+  description = "RDS instance class for dev (free tier, ARM/Graviton)."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "Initial RDS storage in GB for dev."
+  type        = number
+  default     = 20
+}
+
+variable "rds_max_allocated_storage" {
+  description = "Max autoscale RDS storage in GB for dev."
+  type        = number
+  default     = 20
+}
+
+variable "rds_multi_az" {
+  description = "Multi-AZ for dev RDS (false — cost optimization for a learning project)."
+  type        = bool
+  default     = false
+}
+
+variable "rds_backup_retention_period" {
+  description = "Automated backup retention in days for dev RDS."
+  type        = number
+  default     = 7
+}
+
+variable "rds_skip_final_snapshot" {
+  description = "Skip final snapshot on destroy for dev RDS (true — dev is torn down/rebuilt regularly, see scripts/stop-env.sh)."
+  type        = bool
+  default     = true
+}
+
+variable "rds_deletion_protection" {
+  description = "Deletion protection for dev RDS."
+  type        = bool
+  default     = false
+}

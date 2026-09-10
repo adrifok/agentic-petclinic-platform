@@ -112,3 +112,33 @@ output "ecr_repository_arns" {
   description = "Dev ECR repository ARNs, keyed by service name."
   value       = module.ecr.repository_arns
 }
+
+output "rds_endpoint" {
+  description = "Dev RDS endpoint hostname."
+  value       = module.rds.endpoint
+}
+
+output "rds_port" {
+  description = "Dev RDS port."
+  value       = module.rds.port
+}
+
+output "rds_db_instance_id" {
+  description = "Dev RDS instance ID."
+  value       = module.rds.db_instance_id
+}
+
+output "rds_db_name" {
+  description = "Dev RDS shared database name."
+  value       = module.rds.db_name
+}
+
+output "rds_secret_arn" {
+  description = "Dev Secrets Manager ARN for RDS credentials."
+  value       = module.rds.secret_arn
+}
+
+output "rds_secret_name" {
+  description = "Dev Secrets Manager secret name for RDS credentials."
+  value       = module.rds.secret_name
+}

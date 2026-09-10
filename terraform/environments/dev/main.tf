@@ -50,3 +50,24 @@ module "ecr" {
   image_tag_mutability = var.ecr_image_tag_mutability
   force_delete         = var.ecr_force_delete
 }
+
+# Implements PETPLAT-25 (wire RDS into dev). Single shared `petclinic`
+# database for customers/visits/vets services — see
+# docs/technical-spec.md#rds-database and docs/runbooks/rds-database-init.md.
+module "rds" {
+  source = "../../modules/rds"
+
+  project     = var.project
+  environment = var.environment
+
+  subnet_ids        = module.vpc.public_subnet_ids
+  security_group_id = module.vpc.rds_sg_id
+
+  instance_class          = var.rds_instance_class
+  allocated_storage       = var.rds_allocated_storage
+  max_allocated_storage   = var.rds_max_allocated_storage
+  multi_az                = var.rds_multi_az
+  backup_retention_period = var.rds_backup_retention_period
+  skip_final_snapshot     = var.rds_skip_final_snapshot
+  deletion_protection     = var.rds_deletion_protection
+}

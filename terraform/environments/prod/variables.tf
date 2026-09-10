@@ -99,3 +99,47 @@ variable "eks_cluster_log_retention_days" {
   type        = number
   default     = 30
 }
+
+# --- RDS (see docs/technical-spec.md#rds-database) ---
+
+variable "rds_instance_class" {
+  description = "RDS instance class for prod (free tier, ARM/Graviton — same as dev, cost optimization for a learning project; use a larger class with Multi-AZ in a real production environment)."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "Initial RDS storage in GB for prod."
+  type        = number
+  default     = 20
+}
+
+variable "rds_max_allocated_storage" {
+  description = "Max autoscale RDS storage in GB for prod."
+  type        = number
+  default     = 20
+}
+
+variable "rds_multi_az" {
+  description = "Multi-AZ for prod RDS (false — single-AZ to save cost for a learning project; enable Multi-AZ in real production)."
+  type        = bool
+  default     = false
+}
+
+variable "rds_backup_retention_period" {
+  description = "Automated backup retention in days for prod RDS."
+  type        = number
+  default     = 30
+}
+
+variable "rds_skip_final_snapshot" {
+  description = "Skip final snapshot on destroy for prod RDS (false — prod keeps a final snapshot on teardown)."
+  type        = bool
+  default     = false
+}
+
+variable "rds_deletion_protection" {
+  description = "Deletion protection for prod RDS. Deviates from docs/technical-spec.md's Deletion Protection row (which pins both envs to false) — unlike Multi-AZ/backup retention this control is free, so it's enabled for prod as a guard against an accidental terraform destroy/replace or console deletion. Dev stays false (torn down/rebuilt intentionally)."
+  type        = bool
+  default     = true
+}
