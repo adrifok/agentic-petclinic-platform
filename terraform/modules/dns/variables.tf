@@ -27,6 +27,12 @@ variable "domain_name" {
   }
 }
 
+variable "create_hosted_zone" {
+  description = "Whether this module creates the Route 53 hosted zone. Set false when domain_name was registered via Route 53 Domain Registration — that auto-creates a hosted zone and delegates the domain's NS records to it already; creating a second one here would be a dead zone that ACM's DNS validation records would be stranded in. When false, the module looks up the existing zone by name instead."
+  type        = bool
+  default     = true
+}
+
 # --- ALB alias record (PETPLAT-31) ---
 #
 # Left disabled by default: the ALB doesn't exist until the AWS Load Balancer

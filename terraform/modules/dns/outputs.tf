@@ -2,13 +2,13 @@
 # See docs/technical-spec.md#terraform-modules.
 
 output "zone_id" {
-  description = "Route 53 hosted zone ID."
-  value       = aws_route53_zone.this.zone_id
+  description = "Route 53 hosted zone ID (created by this module, or looked up if create_hosted_zone is false)."
+  value       = local.zone_id
 }
 
 output "name_servers" {
-  description = "Route 53 hosted zone name servers — delegate the domain to these at the registrar."
-  value       = aws_route53_zone.this.name_servers
+  description = "Route 53 hosted zone name servers. Only useful to delegate at the registrar when create_hosted_zone is true — when false (e.g. Route 53 Domain Registration), the registrar is already delegated to this same zone."
+  value       = local.zone_name_servers
 }
 
 output "certificate_arn" {

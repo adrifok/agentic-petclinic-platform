@@ -3,6 +3,11 @@ aws_region  = "eu-central-1"
 environment = "dev"
 project     = "petclinic"
 
-# Domain you own, delegated to Route 53 (PETPLAT-28/32). Creates a hosted
-# zone (~$0.50/month) on apply — replace before running terraform apply.
+# Domain you own (PETPLAT-28/32) — replace before running terraform apply.
 domain_name = "example.com"
+
+# If you registered domain_name via Route 53 Domain Registration, leave this
+# false (the default) — AWS already auto-created a hosted zone for it and
+# this module looks that zone up. Set true only if the domain was bought
+# elsewhere with no existing Route 53 zone (creates one, ~$0.50/month).
+# dns_create_hosted_zone = false

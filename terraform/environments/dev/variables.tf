@@ -176,8 +176,14 @@ variable "rds_deletion_protection" {
 # --- DNS (see docs/technical-spec.md#dns-and-ingress) ---
 
 variable "domain_name" {
-  description = "Apex domain for the dev Route 53 hosted zone (e.g. \"example.com\"). Route 53 record will be petclinic-dev.{domain_name}. Set a real, owned domain in terraform.tfvars — creating this hosted zone costs ~$0.50/month even if unused."
+  description = "Apex domain for dev (e.g. \"example.com\"). Route 53 record will be petclinic-dev.{domain_name}. Set the real, owned domain in terraform.tfvars."
   type        = string
+}
+
+variable "dns_create_hosted_zone" {
+  description = "Whether the dns module creates a new Route 53 hosted zone for domain_name. False when the domain was registered via Route 53 Domain Registration (auto-creates its own zone already — see terraform/modules/dns/main.tf); true only for a domain bought elsewhere with no existing zone."
+  type        = bool
+  default     = false
 }
 
 variable "dns_create_alb_record" {

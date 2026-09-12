@@ -13,10 +13,22 @@ locals {
   #   dev:  petclinic-dev.{domain}
   #   prod: petclinic.{domain}
   record_name = var.environment == "prod" ? "petclinic.${var.domain_name}" : "petclinic-${var.environment}.${var.domain_name}"
+
+  zone_id           = var.create_hosted_zone ? aws_route53_zone.this[0].zone_id : data.aws_route53_zone.existing[0].zone_id
+  zone_name_servers = var.create_hosted_zone ? aws_route53_zone.this[0].name_servers : data.aws_route53_zone.existing[0].name_servers
 }
 
 # ---------------------------------------------------------------------------
 # Hosted zone (PETPLAT-28)
+#
+# Conditional: a domain bought through Route 53 Domain Registration already
+# has a hosted zone AWS auto-created and delegated the domain's NS records
+# to — creating a second one here would be a dead zone (nothing resolves to
+# it) and would strand ACM's DNS validation records where the public
+# internet can't see them. Set create_hosted_zone=false in that case (the
+# dev wiring does — its domain was registered via Route 53) so this module
+# looks up the existing zone instead. Leave it true only for a domain bought
+# elsewhere and delegated to a zone this module creates.
 # ---------------------------------------------------------------------------
 
 #
@@ -27,12 +39,24 @@ locals {
 # real operational cost/complexity this learning project accepts skipping,
 # same trade-off reasoning as ADR-0001. Revisit for a real production zone.
 resource "aws_route53_zone" "this" {
+  count = var.create_hosted_zone ? 1 : 0
+
   name    = var.domain_name
   comment = "${local.name_prefix} — managed by Terraform (terraform/modules/dns)."
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-zone"
   })
+}
+
+# Existing zone lookup — used when create_hosted_zone is false (e.g. the
+# zone Route 53 Domain Registration auto-created). Tags on that zone are
+# managed outside Terraform (data sources are read-only).
+data "aws_route53_zone" "existing" {
+  count = var.create_hosted_zone ? 0 : 1
+
+  name         = var.domain_name
+  private_zone = false
 }
 
 # ---------------------------------------------------------------------------
@@ -67,7 +91,7 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id         = aws_route53_zone.this.zone_id
+  zone_id         = local.zone_id
   name            = each.value.name
   type            = each.value.type
   records         = [each.value.record]
@@ -90,7 +114,7 @@ resource "aws_acm_certificate_validation" "this" {
 resource "aws_route53_record" "alb_alias" {
   count = var.create_alb_record ? 1 : 0
 
-  zone_id = aws_route53_zone.this.zone_id
+  zone_id = local.zone_id
   name    = local.record_name
   type    = "A"
 
