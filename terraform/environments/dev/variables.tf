@@ -172,3 +172,28 @@ variable "rds_deletion_protection" {
   type        = bool
   default     = false
 }
+
+# --- DNS (see docs/technical-spec.md#dns-and-ingress) ---
+
+variable "domain_name" {
+  description = "Apex domain for the dev Route 53 hosted zone (e.g. \"example.com\"). Route 53 record will be petclinic-dev.{domain_name}. Set a real, owned domain in terraform.tfvars — creating this hosted zone costs ~$0.50/month even if unused."
+  type        = string
+}
+
+variable "dns_create_alb_record" {
+  description = "Whether to create the Route 53 alias record for the dev ALB (PETPLAT-31). False until the AWS Load Balancer Controller and Ingress (PETPLAT-29, PETPLAT-30) are deployed and the ALB exists."
+  type        = bool
+  default     = false
+}
+
+variable "dns_alb_dns_name" {
+  description = "DNS name of the dev ALB (from `kubectl get ingress api-gateway -n petclinic-dev`). Required when dns_create_alb_record is true."
+  type        = string
+  default     = ""
+}
+
+variable "dns_alb_zone_id" {
+  description = "Canonical hosted zone ID of the dev ALB (from `aws elbv2 describe-load-balancers`). Required when dns_create_alb_record is true."
+  type        = string
+  default     = ""
+}

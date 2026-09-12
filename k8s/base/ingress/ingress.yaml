@@ -1,0 +1,68 @@
+# Ingress: api-gateway
+#
+# Routes external HTTPS traffic (via the ALB the AWS Load Balancer Controller
+# provisions from this resource) to the API Gateway Service on port 8080.
+# All further routing (to customers/visits/vets/genai/admin) is handled by
+# Spring Cloud Gateway inside api-gateway, not by this Ingress — see
+# docs/technical-spec.md#dns-and-ingress.
+#
+# Implements PETPLAT-30. Currently dev-only (namespace petclinic-dev — the
+# only environment wired to the dns module so far, PETPLAT-32); copy/patch
+# for petclinic-prod when DNS is wired into prod.
+#
+# Three placeholders below need real values before `kubectl apply -f` will
+# produce a working ALB (the resource is still valid YAML without them —
+# the controller will just fail to reconcile until they're filled in):
+#   <ACM_CERTIFICATE_ARN>     terraform -chdir=terraform/environments/dev output -raw dns_certificate_arn
+#   <INGRESS_HOST>            terraform -chdir=terraform/environments/dev output -raw dns_record_name
+#   <ALB_SECURITY_GROUP_ID>   terraform -chdir=terraform/environments/dev output -raw alb_sg_id
+# Substitute with, e.g.:
+#   sed -e "s|<ACM_CERTIFICATE_ARN>|$(terraform -chdir=terraform/environments/dev output -raw dns_certificate_arn)|" \
+#       -e "s|<INGRESS_HOST>|$(terraform -chdir=terraform/environments/dev output -raw dns_record_name)|" \
+#       -e "s|<ALB_SECURITY_GROUP_ID>|$(terraform -chdir=terraform/environments/dev output -raw alb_sg_id)|" \
+#       k8s/base/ingress/ingress.yaml | kubectl apply -f -
+#
+# alb.ingress.kubernetes.io/security-groups pins the ALB to the
+# Terraform-managed ALB SG (terraform/modules/vpc — already scoped to 80/443
+# from 0.0.0.0/0, egress to the node SG only) instead of letting the
+# controller create its own untracked SG; manage-backend-security-group-rules
+# is off because the vpc module's node SG already grants that ALB SG ingress
+# on the NodePort range and 8080 — the controller doesn't need to add more.
+#
+# Note: the api-gateway Service this Ingress routes to doesn't exist until
+# E-8 (Kubernetes Manifests — Base) is built. Applying this before then is
+# safe — the ALB is created, it just has no healthy targets yet.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: petclinic-dev
+  labels:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: gateway
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: "<ACM_CERTIFICATE_ARN>"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-port: "8080"
+    alb.ingress.kubernetes.io/security-groups: "<ALB_SECURITY_GROUP_ID>"
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
+spec:
+  ingressClassName: alb
+  rules:
+    - host: "<INGRESS_HOST>"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

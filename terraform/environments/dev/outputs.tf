@@ -83,6 +83,11 @@ output "ebs_csi_role_arn" {
   value       = module.eks.ebs_csi_role_arn
 }
 
+output "lb_controller_role_arn" {
+  description = "Dev IRSA role ARN for the AWS Load Balancer Controller ServiceAccount — pass to scripts/install-lb-controller.sh (PETPLAT-29)."
+  value       = module.eks.lb_controller_role_arn
+}
+
 output "kubeconfig_command" {
   description = "Command to update local kubeconfig for the dev cluster."
   value       = module.eks.kubeconfig_command
@@ -141,4 +146,29 @@ output "rds_secret_arn" {
 output "rds_secret_name" {
   description = "Dev Secrets Manager secret name for RDS credentials."
   value       = module.rds.secret_name
+}
+
+output "dns_zone_id" {
+  description = "Dev Route 53 hosted zone ID."
+  value       = module.dns.zone_id
+}
+
+output "dns_name_servers" {
+  description = "Dev Route 53 hosted zone name servers — delegate var.domain_name to these at the registrar."
+  value       = module.dns.name_servers
+}
+
+output "dns_certificate_arn" {
+  description = "Dev validated ACM certificate ARN — pass to the Ingress's alb.ingress.kubernetes.io/certificate-arn annotation (PETPLAT-30)."
+  value       = module.dns.certificate_arn
+}
+
+output "dns_record_name" {
+  description = "Dev FQDN (petclinic-dev.{domain_name}) the ALB alias record will use once PETPLAT-31 is enabled."
+  value       = module.dns.record_name
+}
+
+output "dns_alb_record_fqdn" {
+  description = "FQDN of the created ALB alias record, or null until dns_create_alb_record is set to true (PETPLAT-31)."
+  value       = module.dns.alb_record_fqdn
 }
