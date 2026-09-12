@@ -326,8 +326,10 @@ ECR Private: 500 MB free tier, then $0.10/GB/month. With 8 services at ~200 MB e
 | Storage Encrypted | `true` (AWS default KMS key) | `true` (AWS default KMS key) |
 | Backup Retention | 7 days | 7 days |
 | Skip Final Snapshot | `true` | `true` |
-| Deletion Protection | `false` | `false` |
+| Deletion Protection | `false` | `true`\* |
 
+> \* **Updated from the original spec value** (`false`): deletion protection is the one control on this page with zero AWS cost, so — unlike Multi-AZ or 30-day backups — there's no cost-optimization argument for leaving it off in prod. Enabled per security review (PETPLAT-27); dev stays `false` since that environment is torn down/rebuilt intentionally (see scripts/stop-env.sh).
+>
 > **Cost note:** db.t4g.micro (2 vCPU, 1 GiB) is AWS RDS free tier eligible (750 hrs/month for 12 months, 20 GB gp2 storage). Both dev and prod use identical sizing — this is a cost optimization for a learning project. In production, you would use db.r7g.large or higher with Multi-AZ, gp3 storage, 30-day backups, deletion protection, and a final snapshot. Students should understand these implications.
 | DB Identifier | `petclinic-dev-mysql` | `petclinic-prod-mysql` |
 | Master Username | `petclinic` | `petclinic` |

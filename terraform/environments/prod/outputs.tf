@@ -102,3 +102,33 @@ output "eks_addon_versions" {
     aws_ebs_csi_driver = module.eks.ebs_csi_addon_version
   }
 }
+
+output "rds_endpoint" {
+  description = "Prod RDS endpoint hostname."
+  value       = module.rds.endpoint
+}
+
+output "rds_port" {
+  description = "Prod RDS port."
+  value       = module.rds.port
+}
+
+output "rds_db_instance_id" {
+  description = "Prod RDS instance ID."
+  value       = module.rds.db_instance_id
+}
+
+output "rds_db_name" {
+  description = "Prod RDS shared database name."
+  value       = module.rds.db_name
+}
+
+output "rds_secret_arn" {
+  description = "Prod Secrets Manager ARN for RDS credentials."
+  value       = module.rds.secret_arn
+}
+
+output "rds_secret_name" {
+  description = "Prod Secrets Manager secret name for RDS credentials."
+  value       = module.rds.secret_name
+}

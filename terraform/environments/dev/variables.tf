@@ -128,3 +128,72 @@ variable "ecr_force_delete" {
   type        = bool
   default     = true
 }
+
+# --- RDS (see docs/technical-spec.md#rds-database) ---
+
+variable "rds_instance_class" {
+  description = "RDS instance class for dev (free tier, ARM/Graviton)."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "Initial RDS storage in GB for dev."
+  type        = number
+  default     = 20
+}
+
+variable "rds_max_allocated_storage" {
+  description = "Max autoscale RDS storage in GB for dev."
+  type        = number
+  default     = 20
+}
+
+variable "rds_multi_az" {
+  description = "Multi-AZ for dev RDS (false — cost optimization for a learning project)."
+  type        = bool
+  default     = false
+}
+
+variable "rds_backup_retention_period" {
+  description = "Automated backup retention in days for dev RDS."
+  type        = number
+  default     = 7
+}
+
+variable "rds_skip_final_snapshot" {
+  description = "Skip final snapshot on destroy for dev RDS (true — dev is torn down/rebuilt regularly, see scripts/stop-env.sh)."
+  type        = bool
+  default     = true
+}
+
+variable "rds_deletion_protection" {
+  description = "Deletion protection for dev RDS."
+  type        = bool
+  default     = false
+}
+
+# --- DNS (see docs/technical-spec.md#dns-and-ingress) ---
+
+variable "domain_name" {
+  description = "Apex domain for the dev Route 53 hosted zone (e.g. \"example.com\"). Route 53 record will be petclinic-dev.{domain_name}. Set a real, owned domain in terraform.tfvars — creating this hosted zone costs ~$0.50/month even if unused."
+  type        = string
+}
+
+variable "dns_create_alb_record" {
+  description = "Whether to create the Route 53 alias record for the dev ALB (PETPLAT-31). False until the AWS Load Balancer Controller and Ingress (PETPLAT-29, PETPLAT-30) are deployed and the ALB exists."
+  type        = bool
+  default     = false
+}
+
+variable "dns_alb_dns_name" {
+  description = "DNS name of the dev ALB (from `kubectl get ingress api-gateway -n petclinic-dev`). Required when dns_create_alb_record is true."
+  type        = string
+  default     = ""
+}
+
+variable "dns_alb_zone_id" {
+  description = "Canonical hosted zone ID of the dev ALB (from `aws elbv2 describe-load-balancers`). Required when dns_create_alb_record is true."
+  type        = string
+  default     = ""
+}

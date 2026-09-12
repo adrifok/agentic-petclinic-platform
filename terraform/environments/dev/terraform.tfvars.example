@@ -2,3 +2,7 @@
 aws_region  = "eu-central-1"
 environment = "dev"
 project     = "petclinic"
+
+# Domain you own, delegated to Route 53 (PETPLAT-28/32). Creates a hosted
+# zone (~$0.50/month) on apply — replace before running terraform apply.
+domain_name = "example.com"
