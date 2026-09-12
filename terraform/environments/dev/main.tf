@@ -83,6 +83,12 @@ module "dns" {
   environment = var.environment
   domain_name = var.domain_name
 
+  # Registered via Route 53 Domain Registration, which already auto-created
+  # a hosted zone and delegated the domain's NS records to it — this module
+  # looks that zone up instead of creating a duplicate one (see
+  # terraform/modules/dns/main.tf).
+  create_hosted_zone = var.dns_create_hosted_zone
+
   create_alb_record = var.dns_create_alb_record
   alb_dns_name      = var.dns_alb_dns_name
   alb_zone_id       = var.dns_alb_zone_id
