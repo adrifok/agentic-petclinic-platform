@@ -41,6 +41,11 @@ output "ebs_csi_role_arn" {
   value       = aws_iam_role.ebs_csi.arn
 }
 
+output "lb_controller_role_arn" {
+  description = "IRSA role ARN for the AWS Load Balancer Controller ServiceAccount (kube-system/aws-load-balancer-controller) — PETPLAT-29."
+  value       = aws_iam_role.lb_controller.arn
+}
+
 output "kubeconfig_command" {
   description = "Command to update local kubeconfig for this cluster (PETPLAT-14)."
   value       = "aws eks update-kubeconfig --name ${aws_eks_cluster.this.name} --region ${data.aws_region.current.name}"

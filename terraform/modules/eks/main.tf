@@ -549,3 +549,63 @@ resource "aws_eks_addon" "ebs_csi" {
   # EBS CSI controller pods need schedulable nodes.
   depends_on = [aws_eks_node_group.this]
 }
+
+# ---------------------------------------------------------------------------
+# AWS Load Balancer Controller IRSA role (PETPLAT-29)
+#
+# The controller itself is installed via Helm (scripts/install-lb-controller.sh),
+# not as an EKS managed add-on — but it needs the same IRSA pattern as the
+# EBS CSI role above: a role trusted by this cluster's OIDC provider, scoped
+# to the controller's ServiceAccount. Policy is the upstream AWS-maintained
+# document (not a hand-trimmed subset) — see
+# terraform/modules/eks/policies/aws-load-balancer-controller-iam-policy.json
+# and https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/.
+# ---------------------------------------------------------------------------
+
+data "aws_iam_policy_document" "lb_controller_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.this.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider_id}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider_id}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "lb_controller" {
+  name        = "${local.name_prefix}-lb-controller-policy"
+  description = "AWS Load Balancer Controller IAM policy (upstream aws-load-balancer-controller project)."
+  policy      = file("${path.module}/policies/aws-load-balancer-controller-iam-policy.json")
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-lb-controller-policy"
+  })
+}
+
+resource "aws_iam_role" "lb_controller" {
+  name               = "${local.name_prefix}-lb-controller-role"
+  assume_role_policy = data.aws_iam_policy_document.lb_controller_assume_role.json
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-lb-controller-role"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lb_controller" {
+  role       = aws_iam_role.lb_controller.name
+  policy_arn = aws_iam_policy.lb_controller.arn
+}

@@ -1,0 +1,17 @@
+# IngressClass: alb
+#
+# Cluster-scoped — created once per cluster, referenced by every Ingress's
+# spec.ingressClassName. Applied by scripts/install-lb-controller.sh after
+# the AWS Load Balancer Controller Helm release (PETPLAT-29).
+# See docs/technical-spec.md#dns-and-ingress.
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: alb
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: infrastructure
+spec:
+  controller: ingress.k8s.aws/alb

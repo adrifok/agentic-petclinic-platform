@@ -71,3 +71,19 @@ module "rds" {
   skip_final_snapshot     = var.rds_skip_final_snapshot
   deletion_protection     = var.rds_deletion_protection
 }
+
+# Implements PETPLAT-32 (wire DNS into dev). Hosted zone + wildcard ACM
+# certificate now; the ALB alias record (PETPLAT-31) turns on once the LB
+# controller + Ingress are deployed and dns_create_alb_record is set to true
+# in terraform.tfvars — see docs/technical-spec.md#dns-and-ingress.
+module "dns" {
+  source = "../../modules/dns"
+
+  project     = var.project
+  environment = var.environment
+  domain_name = var.domain_name
+
+  create_alb_record = var.dns_create_alb_record
+  alb_dns_name      = var.dns_alb_dns_name
+  alb_zone_id       = var.dns_alb_zone_id
+}
