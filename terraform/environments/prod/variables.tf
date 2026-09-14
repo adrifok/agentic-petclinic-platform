@@ -100,6 +100,12 @@ variable "eks_cluster_log_retention_days" {
   default     = 30
 }
 
+variable "kms_deletion_window_days" {
+  description = "Waiting period before prod's KMS keys (eks_secrets, flow_log) are actually deleted after terraform destroy. 30 (the AWS max) — prod isn't churned like dev, so the longer window is kept as a recovery buffer against an accidental/malicious key deletion."
+  type        = number
+  default     = 30
+}
+
 # --- RDS (see docs/technical-spec.md#rds-database) ---
 
 variable "rds_instance_class" {

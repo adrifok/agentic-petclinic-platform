@@ -7,11 +7,12 @@
 module "vpc" {
   source = "../../modules/vpc"
 
-  project             = var.project
-  environment         = var.environment
-  vpc_cidr            = var.vpc_cidr
-  public_subnet_cidrs = var.public_subnet_cidrs
-  availability_zones  = var.availability_zones
+  project                  = var.project
+  environment              = var.environment
+  vpc_cidr                 = var.vpc_cidr
+  public_subnet_cidrs      = var.public_subnet_cidrs
+  availability_zones       = var.availability_zones
+  kms_deletion_window_days = var.kms_deletion_window_days
 }
 
 # Implements PETPLAT-17 (wire EKS into prod). Sizing per
@@ -26,6 +27,7 @@ module "eks" {
   cluster_version                      = var.eks_cluster_version
   cluster_endpoint_public_access_cidrs = var.eks_cluster_endpoint_public_access_cidrs
   cluster_log_retention_days           = var.eks_cluster_log_retention_days
+  kms_deletion_window_days             = var.kms_deletion_window_days
   subnet_ids                           = module.vpc.public_subnet_ids
   cluster_sg_id                        = module.vpc.eks_cluster_sg_id
   node_sg_id                           = module.vpc.eks_node_sg_id
