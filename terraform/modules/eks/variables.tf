@@ -36,6 +36,17 @@ variable "cluster_log_retention_days" {
   default     = 30
 }
 
+variable "kms_deletion_window_days" {
+  description = "Waiting period (7-30 days) before the eks_secrets KMS key is actually deleted after terraform destroy. Shorter in dev (torn down/rebuilt regularly) to cap the lingering per-key cost; longer in prod for recovery protection against an accidental/malicious deletion."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.kms_deletion_window_days >= 7 && var.kms_deletion_window_days <= 30
+    error_message = "kms_deletion_window_days must be between 7 and 30 (AWS KMS limits)."
+  }
+}
+
 variable "subnet_ids" {
   description = "Subnet IDs for the cluster and node group (public subnets — see ADR-0001)."
   type        = list(string)

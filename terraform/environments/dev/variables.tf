@@ -100,6 +100,12 @@ variable "eks_cluster_log_retention_days" {
   default     = 30
 }
 
+variable "kms_deletion_window_days" {
+  description = "Waiting period before dev's KMS keys (eks_secrets, flow_log) are actually deleted after terraform destroy. 7 (the AWS minimum) — dev is torn down/rebuilt regularly to control cost (see scripts/stop-env.sh), so this caps the lingering per-key cost instead of the 30-day default."
+  type        = number
+  default     = 7
+}
+
 # --- ECR (see docs/technical-spec.md#ecr-container-registry) ---
 
 variable "ecr_service_names" {

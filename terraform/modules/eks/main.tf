@@ -128,9 +128,10 @@ data "aws_iam_policy_document" "eks_secrets_kms" {
 }
 
 resource "aws_kms_key" "eks_secrets" {
-  description         = "EKS secrets envelope encryption for ${local.cluster_name}"
-  enable_key_rotation = true
-  policy              = data.aws_iam_policy_document.eks_secrets_kms.json
+  description             = "EKS secrets envelope encryption for ${local.cluster_name}"
+  enable_key_rotation     = true
+  deletion_window_in_days = var.kms_deletion_window_days
+  policy                  = data.aws_iam_policy_document.eks_secrets_kms.json
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-eks-secrets-kms"
