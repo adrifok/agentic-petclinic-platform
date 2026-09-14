@@ -46,17 +46,17 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/certificate-arn: "<ACM_CERTIFICATE_ARN>"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:284495578524:certificate/512f6b3c-7e58-4c07-9ef4-b42a5b505cf6"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
     alb.ingress.kubernetes.io/healthcheck-port: "8080"
-    alb.ingress.kubernetes.io/security-groups: "<ALB_SECURITY_GROUP_ID>"
+    alb.ingress.kubernetes.io/security-groups: "sg-00747c2ab47978687"
     alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
 spec:
   ingressClassName: alb
   rules:
-    - host: "<INGRESS_HOST>"
+    - host: "petclinic-dev.petclinic-adri.click"
       http:
         paths:
           - path: /
