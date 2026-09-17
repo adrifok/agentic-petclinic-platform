@@ -1,5 +1,16 @@
-# visits-service (PETPLAT-41) — DB-backed, waits on both Config Server and
-# Discovery Server before starting.
+# visits-service (PETPLAT-41) — DB-backed, waits on Config Server,
+# Discovery Server, AND Customers Service before starting. The extra
+# customers-service wait isn't just startup-order politeness: visits'
+# schema.sql creates "visits" with FOREIGN KEY (pet_id) REFERENCES
+# pets(id), and the "pets" table is created by customers-service's own
+# schema init — see docs/technical-spec.md#application-services ("Visits
+# Service ... After Customers (FK dependency)"). Without this wait, visits
+# and customers each run their independent schema.sql against the shared
+# database on startup with no ordering guarantee, and visits fails with
+# "Failed to open the referenced table 'pets'" whenever it wins the race.
+# Waiting on customers-service's /actuator/health is sufficient (not just
+# necessary): that endpoint only reports UP once customers-service's own
+# DataSourceScriptDatabaseInitializer bean has already run.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,6 +54,15 @@ spec:
           image: busybox:1.36
           imagePullPolicy: Always
           command: ['sh', '-c', 'until wget -qO- http://discovery-server:8761/actuator/health; do sleep 5; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: false
+        - name: wait-for-customers-service
+          image: busybox:1.36
+          imagePullPolicy: Always
+          command: ['sh', '-c', 'until wget -qO- http://customers-service:8081/actuator/health; do sleep 5; done']
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
