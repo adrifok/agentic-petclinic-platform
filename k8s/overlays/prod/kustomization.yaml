@@ -1,0 +1,37 @@
+# Prod overlay (PETPLAT-46, PETPLAT-47). Per
+# docs/technical-spec.md#kubernetes-overlays: namespace petclinic-prod,
+# replicas=2 for config-server/discovery-server/api-gateway/
+# customers-service/visits-service/vets-service (HA); genai-service and
+# admin-server stay at the base default of 1 (cost saving / single-replica
+# tool). HPA covers the 5 stateless/scalable services — requires Metrics
+# Server on the prod EKS cluster (PETPLAT-72).
+#
+# Image tags: same as the dev overlay — left as the base placeholder until
+# CI/CD (PETPLAT-85) pushes real SHA-tagged/release images. Resolve with:
+#   kustomize edit set image <service>=<account>.dkr.ecr.eu-central-1.amazonaws.com/petclinic-prod/<service>:<tag>
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: petclinic-prod
+
+resources:
+  - ../../base
+  - hpa/api-gateway-hpa.yaml
+  - hpa/customers-service-hpa.yaml
+  - hpa/visits-service-hpa.yaml
+  - hpa/vets-service-hpa.yaml
+  - hpa/genai-service-hpa.yaml
+
+replicas:
+  - name: config-server
+    count: 2
+  - name: discovery-server
+    count: 2
+  - name: api-gateway
+    count: 2
+  - name: customers-service
+    count: 2
+  - name: visits-service
+    count: 2
+  - name: vets-service
+    count: 2

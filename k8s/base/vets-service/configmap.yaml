@@ -1,0 +1,15 @@
+# SPRING_DATASOURCE_URL: replace <RDS_ENDPOINT> before applying — see
+# k8s/base/customers-service/configmap.yaml for the sed command.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vets-service-config
+  labels:
+    app.kubernetes.io/name: vets-service
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: service
+data:
+  SPRING_PROFILES_ACTIVE: "docker,mysql,production"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic"

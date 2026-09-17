@@ -1,0 +1,19 @@
+# SPRING_DATASOURCE_URL: replace <RDS_ENDPOINT> before applying, e.g.:
+#   sed -i "s|<RDS_ENDPOINT>|$(terraform -chdir=terraform/environments/dev output -raw rds_endpoint)|" \
+#     k8s/base/customers-service/configmap.yaml
+# Same placeholder convention as k8s/base/ingress/ingress.yaml. Not filled in
+# per-overlay because the endpoint changes on every RDS recreate (dev is torn
+# down/rebuilt regularly), same reasoning as that file.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customers-service-config
+  labels:
+    app.kubernetes.io/name: customers-service
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: service
+data:
+  SPRING_PROFILES_ACTIVE: "docker,mysql"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic"

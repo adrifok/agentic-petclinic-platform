@@ -1,0 +1,17 @@
+# Dev overlay (PETPLAT-45). Per docs/technical-spec.md#kubernetes-overlays:
+# namespace petclinic-dev, all services at 1 replica (already the base
+# default — no replica patch needed here).
+#
+# Image tags: left as the base placeholder
+# ({account}.dkr.ecr.eu-central-1.amazonaws.com/petclinic-{env}/<service>:<TAG>)
+# until CI/CD (PETPLAT-85) pushes real SHA-tagged images to ECR — no real
+# image exists yet, so there is nothing real to resolve to. Once one does,
+# set it per service with:
+#   kustomize edit set image <service>=<account>.dkr.ecr.eu-central-1.amazonaws.com/petclinic-dev/<service>:<commit-sha>
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: petclinic-dev
+
+resources:
+  - ../../base
