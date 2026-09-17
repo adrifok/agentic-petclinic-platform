@@ -55,7 +55,7 @@ spec:
             readOnlyRootFilesystem: false
       containers:
         - name: genai-service
-          image: "{account}.dkr.ecr.eu-central-1.amazonaws.com/petclinic-{env}/genai-service:<TAG>"
+          image: "284495578524.dkr.ecr.eu-central-1.amazonaws.com/petclinic-{env}/genai-service:v1.0.0"
           imagePullPolicy: Always
           ports:
             - name: http

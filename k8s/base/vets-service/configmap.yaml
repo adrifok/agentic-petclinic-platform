@@ -1,5 +1,6 @@
-# SPRING_DATASOURCE_URL: replace <RDS_ENDPOINT> before applying — see
-# k8s/base/customers-service/configmap.yaml for the sed command.
+# SPRING_DATASOURCE_URL below is dev's live RDS endpoint (as of the last
+# fill) — see k8s/base/customers-service/configmap.yaml for the re-fill
+# command to run once the RDS instance is recreated and this goes stale.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,4 +13,4 @@ metadata:
 data:
   SPRING_PROFILES_ACTIVE: "docker,mysql,production"
   CONFIG_SERVER_URL: "http://config-server:8888"
-  SPRING_DATASOURCE_URL: "jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://petclinic-dev-mysql.c9eeoak8as0x.eu-central-1.rds.amazonaws.com:3306/petclinic"

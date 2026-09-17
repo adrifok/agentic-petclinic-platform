@@ -50,7 +50,7 @@ spec:
             readOnlyRootFilesystem: false
       containers:
         - name: customers-service
-          image: "{account}.dkr.ecr.eu-central-1.amazonaws.com/petclinic-{env}/customers-service:<TAG>"
+          image: "284495578524.dkr.ecr.eu-central-1.amazonaws.com/petclinic-{env}/customers-service:v1.0.0"
           imagePullPolicy: Always
           ports:
             - name: http
