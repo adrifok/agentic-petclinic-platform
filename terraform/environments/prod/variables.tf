@@ -106,6 +106,17 @@ variable "kms_deletion_window_days" {
   default     = 30
 }
 
+variable "rds_secret_recovery_window_days" {
+  description = "Waiting period before prod's rds-credentials secret is actually deleted after terraform destroy. 30 (the AWS max) — prod isn't churned like dev, so the longer window is kept as a recovery buffer against an accidental/malicious secret deletion."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.rds_secret_recovery_window_days == 0 || (var.rds_secret_recovery_window_days >= 7 && var.rds_secret_recovery_window_days <= 30)
+    error_message = "rds_secret_recovery_window_days must be 0 (immediate delete) or between 7 and 30 (AWS Secrets Manager limits)."
+  }
+}
+
 # --- RDS (see docs/technical-spec.md#rds-database) ---
 
 variable "rds_instance_class" {

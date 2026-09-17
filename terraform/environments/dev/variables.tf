@@ -106,6 +106,17 @@ variable "kms_deletion_window_days" {
   default     = 7
 }
 
+variable "rds_secret_recovery_window_days" {
+  description = "Waiting period before dev's rds-credentials secret is actually deleted after terraform destroy. 0 — dev is torn down/rebuilt regularly (see scripts/stop-env.sh); a nonzero window leaves the secret in a pending-deletion state that blocks the next apply from recreating it (name collision) until the window elapses or it's manually restored/force-deleted."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.rds_secret_recovery_window_days == 0 || (var.rds_secret_recovery_window_days >= 7 && var.rds_secret_recovery_window_days <= 30)
+    error_message = "rds_secret_recovery_window_days must be 0 (immediate delete) or between 7 and 30 (AWS Secrets Manager limits)."
+  }
+}
+
 # --- ECR (see docs/technical-spec.md#ecr-container-registry) ---
 
 variable "ecr_service_names" {
