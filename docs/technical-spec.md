@@ -943,11 +943,13 @@ Five IAM Roles for Service Accounts, each with OIDC trust policy scoped to a spe
 
 | Role Name Pattern | K8s ServiceAccount | Namespace | IAM Policy | Used By |
 |-------------------|--------------------|-----------|------------|---------|
-| `petclinic-{env}-eso-role` | `external-secrets-sa` | `external-secrets` | `secretsmanager:GetSecretValue`, `secretsmanager:DescribeSecret` on `arn:aws:secretsmanager:eu-central-1:{account}:secret:petclinic/*` | ESO |
+| `petclinic-{env}-eso-role` | `external-secrets-sa` | `external-secrets` | `secretsmanager:GetSecretValue`, `secretsmanager:DescribeSecret` on `arn:aws:secretsmanager:eu-central-1:{account}:secret:petclinic/{env}/*`\* | ESO |
 | `petclinic-{env}-lb-controller-role` | `aws-load-balancer-controller` | `kube-system` | AWS Load Balancer Controller IAM policy (managed) | ALB Controller |
 | `petclinic-{env}-ebs-csi-role` | `ebs-csi-controller-sa` | `kube-system` | `AmazonEBSCSIDriverPolicy` (AWS managed) | EBS CSI Driver |
 | `petclinic-{env}-argocd-role` | `argocd-server` | `argocd` | Minimal: only needed if ArgoCD accesses AWS resources directly (optional) | ArgoCD |
 | `petclinic-{env}-karpenter-role` | `karpenter` | `kube-system` | Karpenter controller policy: `ec2:*`, `iam:PassRole`, `ssm:GetParameter`, `pricing:GetProducts`, `sqs:*`, `eks:DescribeCluster` (scoped) | Karpenter |
+
+> \* **Updated from the original spec value** (`secret:petclinic/*`, project-wide): dev and prod share one AWS account, so a project-wide pattern would let `petclinic-dev-eso-role` read prod's RDS credentials and OpenAI key, and vice versa. Scoped down to `secret:petclinic/{env}/*` per security review (PETPLAT-37).
 
 ### IRSA Trust Policy Template
 

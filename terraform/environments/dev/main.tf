@@ -96,3 +96,15 @@ module "dns" {
   alb_dns_name      = var.dns_alb_dns_name
   alb_zone_id       = var.dns_alb_zone_id
 }
+
+# Implements PETPLAT-33 (non-RDS secrets). RDS credentials are created by the
+# rds module (PETPLAT-23) — this module handles the OpenAI API key only. See
+# docs/technical-spec.md#secrets-management.
+module "secrets" {
+  source = "../../modules/secrets"
+
+  project     = var.project
+  environment = var.environment
+
+  openai_api_key = var.openai_api_key
+}

@@ -610,3 +610,81 @@ resource "aws_iam_role_policy_attachment" "lb_controller" {
   role       = aws_iam_role.lb_controller.name
   policy_arn = aws_iam_policy.lb_controller.arn
 }
+
+# ---------------------------------------------------------------------------
+# External Secrets Operator IRSA role (PETPLAT-37)
+#
+# ESO's controller assumes this role to sync petclinic/{env}/rds-credentials
+# and petclinic/{env}/openai-api-key from Secrets Manager into Kubernetes
+# Secrets (PETPLAT-35, PETPLAT-36). Scoped to GetSecretValue/DescribeSecret on
+# this environment's secret prefix only, in this account and region — never
+# secretsmanager:* or resource "*". Deviates from the literal
+# docs/technical-spec.md#irsa-roles pattern (secret:petclinic/*), which is
+# project-wide: dev and prod share one AWS account, so that pattern would let
+# petclinic-dev-eso-role read prod's RDS credentials and OpenAI key (and vice
+# versa) — flagged in security review, scoped down to
+# secret:petclinic/{environment}/* here instead. No kms:Decrypt statement:
+# every petclinic secret uses the AWS-managed aws/secretsmanager key, whose
+# own key policy already grants Decrypt to any principal in this account with
+# Secrets Manager permissions. A custom CMK would need an explicit grant here
+# instead — see docs/technical-spec.md#irsa-roles.
+# ---------------------------------------------------------------------------
+
+data "aws_iam_policy_document" "eso_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.this.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider_id}:sub"
+      values   = ["system:serviceaccount:external-secrets:external-secrets-sa"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider_id}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "eso_secrets" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+    ]
+    resources = ["arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project}/${var.environment}/*"]
+  }
+}
+
+resource "aws_iam_policy" "eso" {
+  name        = "${local.name_prefix}-eso-policy"
+  description = "External Secrets Operator read-only access to petclinic Secrets Manager secrets."
+  policy      = data.aws_iam_policy_document.eso_secrets.json
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-eso-policy"
+  })
+}
+
+resource "aws_iam_role" "eso" {
+  name               = "${local.name_prefix}-eso-role"
+  assume_role_policy = data.aws_iam_policy_document.eso_assume_role.json
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-eso-role"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eso" {
+  role       = aws_iam_role.eso.name
+  policy_arn = aws_iam_policy.eso.arn
+}

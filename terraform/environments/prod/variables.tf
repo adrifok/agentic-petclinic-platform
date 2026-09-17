@@ -160,3 +160,11 @@ variable "rds_deletion_protection" {
   type        = bool
   default     = true
 }
+
+# --- Secrets (see docs/technical-spec.md#secrets-management) ---
+
+variable "openai_api_key" {
+  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/prod/openai-api-key. Set the real value in terraform.tfvars (gitignored) or TF_VAR_openai_api_key — never commit it."
+  type        = string
+  sensitive   = true
+}
