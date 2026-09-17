@@ -18,9 +18,10 @@ variable "environment" {
 }
 
 variable "openai_api_key" {
-  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/{env}/openai-api-key. Never hardcode — pass via terraform.tfvars (gitignored) or TF_VAR_openai_api_key."
+  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/{env}/openai-api-key. Never hardcode — pass via terraform.tfvars (gitignored) or TF_VAR_openai_api_key. genai-service is optional (see docs/technical-spec.md#application-services) — defaults to empty until a real key is set."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "tags" {

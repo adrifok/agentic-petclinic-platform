@@ -224,7 +224,8 @@ variable "dns_alb_zone_id" {
 # --- Secrets (see docs/technical-spec.md#secrets-management) ---
 
 variable "openai_api_key" {
-  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/dev/openai-api-key. Set the real value in terraform.tfvars (gitignored) or TF_VAR_openai_api_key — never commit it."
+  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/dev/openai-api-key. Set the real value in terraform.tfvars (gitignored) or TF_VAR_openai_api_key — never commit it. genai-service is optional — leave unset (empty) to skip it."
   type        = string
   sensitive   = true
+  default     = ""
 }
