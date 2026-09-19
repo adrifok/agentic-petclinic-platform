@@ -13,9 +13,10 @@ locals {
 # var.openai_api_key skips the secret entirely instead of storing a
 # placeholder — set a real key to create it.
 resource "aws_secretsmanager_secret" "openai_api_key" {
-  count       = var.openai_api_key != "" ? 1 : 0
-  name        = "${var.project}/${var.environment}/openai-api-key"
-  description = "OpenAI API key for ${local.name_prefix}-genai-service."
+  count                   = var.openai_api_key != "" ? 1 : 0
+  name                    = "${var.project}/${var.environment}/openai-api-key"
+  description             = "OpenAI API key for ${local.name_prefix}-genai-service."
+  recovery_window_in_days = var.secret_recovery_window_days
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-openai-api-key"

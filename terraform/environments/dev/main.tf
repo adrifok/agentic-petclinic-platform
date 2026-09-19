@@ -72,7 +72,7 @@ module "rds" {
   backup_retention_period     = var.rds_backup_retention_period
   skip_final_snapshot         = var.rds_skip_final_snapshot
   deletion_protection         = var.rds_deletion_protection
-  secret_recovery_window_days = var.rds_secret_recovery_window_days
+  secret_recovery_window_days = var.secret_recovery_window_days
 }
 
 # Implements PETPLAT-32 (wire DNS into dev). Hosted zone + wildcard ACM
@@ -106,5 +106,6 @@ module "secrets" {
   project     = var.project
   environment = var.environment
 
-  openai_api_key = var.openai_api_key
+  openai_api_key              = var.openai_api_key
+  secret_recovery_window_days = var.secret_recovery_window_days
 }

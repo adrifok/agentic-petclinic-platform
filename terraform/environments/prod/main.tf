@@ -57,7 +57,7 @@ module "rds" {
   max_allocated_storage       = var.rds_max_allocated_storage
   multi_az                    = var.rds_multi_az
   backup_retention_period     = var.rds_backup_retention_period
-  secret_recovery_window_days = var.rds_secret_recovery_window_days
+  secret_recovery_window_days = var.secret_recovery_window_days
   skip_final_snapshot         = var.rds_skip_final_snapshot
   deletion_protection         = var.rds_deletion_protection
 }
@@ -71,5 +71,6 @@ module "secrets" {
   project     = var.project
   environment = var.environment
 
-  openai_api_key = var.openai_api_key
+  openai_api_key              = var.openai_api_key
+  secret_recovery_window_days = var.secret_recovery_window_days
 }
