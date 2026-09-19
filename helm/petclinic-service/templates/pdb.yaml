@@ -1,0 +1,15 @@
+{{- $override := index (.Values.perService | default dict) .Release.Name | default dict }}
+{{- $pdb := $override.podDisruptionBudget | default .Values.podDisruptionBudget }}
+{{- if $pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "petclinic-service.fullname" . }}
+  labels:
+    {{- include "petclinic-service.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ $pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "petclinic-service.selectorLabels" . | nindent 6 }}
+{{- end }}
