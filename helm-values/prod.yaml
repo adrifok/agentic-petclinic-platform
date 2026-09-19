@@ -16,10 +16,16 @@ image:
   registry: "284495578524.dkr.ecr.eu-central-1.amazonaws.com/petclinic-prod"
   pullPolicy: Always
 
-# Prod RDS doesn't exist yet — refill once it's created:
-#   terraform -chdir=terraform/environments/prod output -raw rds_endpoint
+# Prod RDS doesn't exist yet. This is a deliberately invalid placeholder —
+# the chart (helm/petclinic-service/templates/configmap.yaml) refuses to
+# render for any datasource-enabled service while "RDS_ENDPOINT" appears
+# here, so an accidental deploy fails loudly at `helm template`/`helm
+# install` time instead of silently reaching a broken connection string at
+# runtime. Refill once prod RDS exists:
+#   sed -i "s|<RDS_ENDPOINT>|$(terraform -chdir=terraform/environments/prod output -raw rds_endpoint)|" \
+#     helm-values/prod.yaml
 datasource:
-  url: "<RDS_ENDPOINT>"
+  url: "jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic"
 
 perService:
   config-server:

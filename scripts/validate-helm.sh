@@ -32,13 +32,25 @@ fi
 
 for env in "${ENVIRONMENTS[@]}"; do
   ns="petclinic-${env}"
+
+  # prod.yaml's datasource.url is a deliberate placeholder (prod RDS doesn't
+  # exist yet) that the chart refuses to render — see
+  # helm/petclinic-service/templates/configmap.yaml. Override it here so
+  # rendering can still be validated; this never touches the checked-in
+  # file, so a real `helm install` against prod.yaml as committed still
+  # fails loudly until someone fills in the real endpoint.
+  extra_set=(--set image.tag=v1.0.0)
+  if [ "$env" = "prod" ]; then
+    extra_set+=(--set datasource.url=jdbc:mysql://ci-validation-placeholder.invalid:3306/petclinic)
+  fi
+
   for svc in "${SERVICES[@]}"; do
     echo
     echo "[2/3] helm lint + template: $svc ($env)"
     if ! helm lint "$CHART" \
       -f "$VALUES_DIR/${svc}.yaml" \
       -f "$VALUES_DIR/${env}.yaml" \
-      --set image.tag=v1.0.0 >/tmp/helm-lint-out 2>&1; then
+      "${extra_set[@]}" >/tmp/helm-lint-out 2>&1; then
       echo "  -> LINT FAILED"
       cat /tmp/helm-lint-out
       fail=1
@@ -50,7 +62,7 @@ for env in "${ENVIRONMENTS[@]}"; do
       -n "$ns" \
       -f "$VALUES_DIR/${svc}.yaml" \
       -f "$VALUES_DIR/${env}.yaml" \
-      --set image.tag=v1.0.0 >"$out_file" 2>/tmp/helm-template-out; then
+      "${extra_set[@]}" >"$out_file" 2>/tmp/helm-template-out; then
       echo "  -> TEMPLATE FAILED"
       cat /tmp/helm-template-out
       fail=1
