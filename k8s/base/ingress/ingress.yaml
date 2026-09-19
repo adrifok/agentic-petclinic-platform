@@ -46,12 +46,12 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:284495578524:certificate/2c93d1c4-e7f9-4504-8ca5-de7a6fee811e"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:284495578524:certificate/6d9796b2-1156-42a2-9ffe-6a5cb165626b"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
     alb.ingress.kubernetes.io/healthcheck-port: "8080"
-    alb.ingress.kubernetes.io/security-groups: "sg-014bc5d7c87668ee5"
+    alb.ingress.kubernetes.io/security-groups: "sg-03ca78ef3f9dd3a08"
     alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
 spec:
   ingressClassName: alb
