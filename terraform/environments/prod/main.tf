@@ -7,11 +7,12 @@
 module "vpc" {
   source = "../../modules/vpc"
 
-  project             = var.project
-  environment         = var.environment
-  vpc_cidr            = var.vpc_cidr
-  public_subnet_cidrs = var.public_subnet_cidrs
-  availability_zones  = var.availability_zones
+  project                  = var.project
+  environment              = var.environment
+  vpc_cidr                 = var.vpc_cidr
+  public_subnet_cidrs      = var.public_subnet_cidrs
+  availability_zones       = var.availability_zones
+  kms_deletion_window_days = var.kms_deletion_window_days
 }
 
 # Implements PETPLAT-17 (wire EKS into prod). Sizing per
@@ -26,6 +27,7 @@ module "eks" {
   cluster_version                      = var.eks_cluster_version
   cluster_endpoint_public_access_cidrs = var.eks_cluster_endpoint_public_access_cidrs
   cluster_log_retention_days           = var.eks_cluster_log_retention_days
+  kms_deletion_window_days             = var.kms_deletion_window_days
   subnet_ids                           = module.vpc.public_subnet_ids
   cluster_sg_id                        = module.vpc.eks_cluster_sg_id
   node_sg_id                           = module.vpc.eks_node_sg_id
@@ -50,11 +52,25 @@ module "rds" {
   subnet_ids        = module.vpc.public_subnet_ids
   security_group_id = module.vpc.rds_sg_id
 
-  instance_class          = var.rds_instance_class
-  allocated_storage       = var.rds_allocated_storage
-  max_allocated_storage   = var.rds_max_allocated_storage
-  multi_az                = var.rds_multi_az
-  backup_retention_period = var.rds_backup_retention_period
-  skip_final_snapshot     = var.rds_skip_final_snapshot
-  deletion_protection     = var.rds_deletion_protection
+  instance_class              = var.rds_instance_class
+  allocated_storage           = var.rds_allocated_storage
+  max_allocated_storage       = var.rds_max_allocated_storage
+  multi_az                    = var.rds_multi_az
+  backup_retention_period     = var.rds_backup_retention_period
+  secret_recovery_window_days = var.secret_recovery_window_days
+  skip_final_snapshot         = var.rds_skip_final_snapshot
+  deletion_protection         = var.rds_deletion_protection
+}
+
+# Implements PETPLAT-33 (non-RDS secrets). RDS credentials are created by the
+# rds module (PETPLAT-23) — this module handles the OpenAI API key only. See
+# docs/technical-spec.md#secrets-management.
+module "secrets" {
+  source = "../../modules/secrets"
+
+  project     = var.project
+  environment = var.environment
+
+  openai_api_key              = var.openai_api_key
+  secret_recovery_window_days = var.secret_recovery_window_days
 }

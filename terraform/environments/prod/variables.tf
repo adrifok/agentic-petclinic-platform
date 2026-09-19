@@ -100,6 +100,23 @@ variable "eks_cluster_log_retention_days" {
   default     = 30
 }
 
+variable "kms_deletion_window_days" {
+  description = "Waiting period before prod's KMS keys (eks_secrets, flow_log) are actually deleted after terraform destroy. 30 (the AWS max) — prod isn't churned like dev, so the longer window is kept as a recovery buffer against an accidental/malicious key deletion."
+  type        = number
+  default     = 30
+}
+
+variable "secret_recovery_window_days" {
+  description = "Waiting period before prod's Secrets Manager secrets (rds-credentials, openai-api-key) are actually deleted after terraform destroy. 30 (the AWS max) — prod isn't churned like dev, so the longer window is kept as a recovery buffer against an accidental/malicious secret deletion."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.secret_recovery_window_days == 0 || (var.secret_recovery_window_days >= 7 && var.secret_recovery_window_days <= 30)
+    error_message = "secret_recovery_window_days must be 0 (immediate delete) or between 7 and 30 (AWS Secrets Manager limits)."
+  }
+}
+
 # --- RDS (see docs/technical-spec.md#rds-database) ---
 
 variable "rds_instance_class" {
@@ -142,4 +159,13 @@ variable "rds_deletion_protection" {
   description = "Deletion protection for prod RDS. Deviates from docs/technical-spec.md's Deletion Protection row (which pins both envs to false) — unlike Multi-AZ/backup retention this control is free, so it's enabled for prod as a guard against an accidental terraform destroy/replace or console deletion. Dev stays false (torn down/rebuilt intentionally)."
   type        = bool
   default     = true
+}
+
+# --- Secrets (see docs/technical-spec.md#secrets-management) ---
+
+variable "openai_api_key" {
+  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/prod/openai-api-key. Set the real value in terraform.tfvars (gitignored) or TF_VAR_openai_api_key — never commit it. genai-service is optional — leave unset (empty) to skip it."
+  type        = string
+  sensitive   = true
+  default     = ""
 }

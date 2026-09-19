@@ -1,0 +1,30 @@
+# vets-service (PETPLAT-41) — DB-backed, waits on Config Server and
+# Discovery Server. SPRING_PROFILES_ACTIVE includes "production" because
+# vets-service's Caffeine cache (CacheConfig) is gated on
+# @Profile("production") — see docs/technical-spec.md#spring-profiles.
+image:
+  repository: vets-service
+
+service:
+  port: 8083
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker,mysql,production"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+
+datasource:
+  enabled: true
+
+secretEnv:
+  - name: SPRING_DATASOURCE_USERNAME
+    secretName: rds-credentials
+    secretKey: username
+  - name: SPRING_DATASOURCE_PASSWORD
+    secretName: rds-credentials
+    secretKey: password
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health
+  - name: wait-for-discovery-server
+    url: http://discovery-server:8761/actuator/health

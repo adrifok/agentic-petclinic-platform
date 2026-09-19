@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "petclinic-service.fullname" . }}-config
+  labels:
+    {{- include "petclinic-service.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.configMap }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- if .Values.datasource.enabled }}
+  {{- if or (not .Values.datasource.url) (contains "RDS_ENDPOINT" .Values.datasource.url) }}
+  {{- fail (printf "%s: datasource.enabled=true but datasource.url is unset or still a placeholder (%q) — fill in the real RDS endpoint in helm-values/{dev,prod}.yaml before deploying" .Release.Name .Values.datasource.url) }}
+  {{- end }}
+  SPRING_DATASOURCE_URL: {{ .Values.datasource.url | quote }}
+  {{- end }}

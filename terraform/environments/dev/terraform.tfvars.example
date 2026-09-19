@@ -11,3 +11,9 @@ domain_name = "example.com"
 # this module looks that zone up. Set true only if the domain was bought
 # elsewhere with no existing Route 53 zone (creates one, ~$0.50/month).
 # dns_create_hosted_zone = false
+
+# OpenAI API key for genai-service (PETPLAT-33) — replace before running
+# terraform apply. Stored in Secrets Manager as petclinic/dev/openai-api-key,
+# never hardcoded in any committed file. Get a key at
+# https://platform.openai.com/api-keys.
+openai_api_key = "REPLACE_ME"

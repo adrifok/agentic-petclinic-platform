@@ -1,0 +1,19 @@
+# admin-server (PETPLAT-44) — Spring Boot Admin dashboard, waits on Config
+# Server and Discovery Server before starting.
+component: admin
+
+image:
+  repository: admin-server
+
+service:
+  port: 9090
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health
+  - name: wait-for-discovery-server
+    url: http://discovery-server:8761/actuator/health

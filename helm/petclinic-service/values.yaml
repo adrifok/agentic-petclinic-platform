@@ -1,0 +1,111 @@
+# Default values for petclinic-service.
+# Per-service config lives in helm-values/{service}.yaml, per-environment
+# config in helm-values/{dev,prod}.yaml. See docs/technical-spec.md#helm-charts.
+#
+# These defaults intentionally match dev (k8s/overlays/dev): 1 replica, no
+# HPA, no PDB. Prod per-service overrides come from prod.yaml's `perService`
+# map (keyed by release/service name) — not from blanket values here.
+
+replicaCount: 1
+
+# Sets app.kubernetes.io/component — override per service in helm-values/
+# (server | gateway | service | admin). "service" covers 4 of 8 services.
+component: service
+
+image:
+  registry: ""    # e.g. 284495578524.dkr.ecr.eu-central-1.amazonaws.com/petclinic-dev — set in helm-values/{env}.yaml
+  repository: ""  # e.g. customers-service — set in helm-values/{service}.yaml
+  tag: "latest"   # overridden at install time: --set image.tag=${SHA}
+  pullPolicy: IfNotPresent
+
+initContainerImage: busybox:1.36
+
+service:
+  port: 8080  # overridden per service
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  startup:
+    path: /actuator/health
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  readiness:
+    path: /actuator/health/readiness
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    path: /actuator/health/liveness
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Non-secret env vars, injected via envFrom -> ConfigMap. Set per service.
+configMap: {}
+
+# DB-backed services (customers/visits/vets) set datasource.enabled: true in
+# their own helm-values/{service}.yaml; the actual JDBC URL is env-specific
+# and set once in helm-values/{dev,prod}.yaml as datasource.url.
+datasource:
+  enabled: false
+  url: ""
+
+# Secret-backed env vars. Names/keys must match the ExternalSecret targets
+# in k8s/base/external-secrets/. Set per service.
+secretEnv: []
+# - name: SPRING_DATASOURCE_USERNAME
+#   secretName: rds-credentials
+#   secretKey: username
+
+# Additional plain env vars (not from ConfigMap/Secret). Set per service.
+env: []
+
+# Extra annotations applied to the pod template (e.g. prometheus.io/scrape).
+# Set per service.
+podAnnotations: {}
+# - name: SOME_VAR
+#   value: some-value
+
+# Wait-for init containers enforcing service startup order. Set per service.
+initContainers: []
+# - name: wait-for-config-server
+#   url: http://config-server:8888/actuator/health
+
+serviceAccount:
+  annotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Per-service prod overrides, keyed by release name (= service name). Only
+# populated by helm-values/prod.yaml. Empty/absent for dev, so dev falls
+# through to the chart defaults above. See helm-values/prod.yaml.
+perService: {}

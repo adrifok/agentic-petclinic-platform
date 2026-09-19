@@ -1,0 +1,32 @@
+# api-gateway (PETPLAT-43) — public entry point, target of the ALB Ingress.
+# Higher CPU (200m/1000m) than other services since it handles all incoming
+# traffic.
+component: gateway
+
+image:
+  repository: api-gateway
+
+service:
+  port: 8080
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+  DISCOVERY_SERVER_URL: "http://discovery-server:8761"
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health
+  - name: wait-for-discovery-server
+    url: http://discovery-server:8761/actuator/health
+
+podAnnotations:
+  prometheus.io/scrape: 'true'

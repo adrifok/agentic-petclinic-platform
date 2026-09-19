@@ -1,0 +1,33 @@
+# ExternalSecret: openai-api-key (prod)
+#
+# Syncs the OpenAI API key (Secrets Manager secret petclinic/prod/openai-api-key,
+# created by the secrets module — PETPLAT-33) into a K8s Secret named
+# openai-api-key in petclinic-prod, with key `OPENAI_API_KEY`. Consumed by
+# genai-service as its OPENAI_API_KEY env var (PETPLAT-42).
+#
+# Prod counterpart of openai-api-key.yaml (dev) — implements PETPLAT-36 for
+# petclinic-prod, now that the prod secrets module and prod ESO IRSA role
+# (petclinic-prod-eso-role — PETPLAT-37) both exist. Apply after
+# scripts/install-external-secrets.sh prod. See
+# docs/technical-spec.md#secrets-management.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: openai-api-key
+  namespace: petclinic-prod
+  labels:
+    app.kubernetes.io/name: openai-api-key
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: infrastructure
+spec:
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  target:
+    name: openai-api-key
+  data:
+    - secretKey: OPENAI_API_KEY
+      remoteRef:
+        key: petclinic/prod/openai-api-key

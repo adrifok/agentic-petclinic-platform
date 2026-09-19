@@ -1,0 +1,16 @@
+# discovery-server (PETPLAT-40) — Eureka, waits on config-server.
+component: server
+
+image:
+  repository: discovery-server
+
+service:
+  port: 8761
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health

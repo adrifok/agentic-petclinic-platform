@@ -97,6 +97,17 @@ variable "log_retention_days" {
   default     = 30
 }
 
+variable "secret_recovery_window_days" {
+  description = "Waiting period before the rds-credentials secret is actually deleted after terraform destroy. 0 = delete immediately, no recovery. 7-30 = AWS recovery window."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.secret_recovery_window_days == 0 || (var.secret_recovery_window_days >= 7 && var.secret_recovery_window_days <= 30)
+    error_message = "secret_recovery_window_days must be 0 (immediate delete) or between 7 and 30 (AWS Secrets Manager limits)."
+  }
+}
+
 variable "db_name" {
   description = "Initial database name — the single shared petclinic database used by customers/visits/vets services (PETPLAT-24)."
   type        = string
