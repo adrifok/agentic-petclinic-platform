@@ -27,3 +27,6 @@ initContainers:
     url: http://config-server:8888/actuator/health
   - name: wait-for-discovery-server
     url: http://discovery-server:8761/actuator/health
+
+podAnnotations:
+  prometheus.io/scrape: 'true'

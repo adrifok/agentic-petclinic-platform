@@ -67,6 +67,10 @@ secretEnv: []
 
 # Additional plain env vars (not from ConfigMap/Secret). Set per service.
 env: []
+
+# Extra annotations applied to the pod template (e.g. prometheus.io/scrape).
+# Set per service.
+podAnnotations: {}
 # - name: SOME_VAR
 #   value: some-value
 
