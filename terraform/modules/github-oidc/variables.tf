@@ -59,6 +59,28 @@ variable "github_repo" {
   }
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub account ID of github_owner. Set together with github_repo_id when the repo uses immutable OIDC subject claims (gh api repos/{owner}/{repo}/actions/oidc/customization/sub shows use_immutable_subject). Empty = legacy sub format."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = can(regex("^[0-9]*$", var.github_owner_id))
+    error_message = "github_owner_id must be numeric (or empty)."
+  }
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub repository ID. Set together with github_owner_id for immutable OIDC subject claims. Empty = legacy sub format."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = can(regex("^[0-9]*$", var.github_repo_id))
+    error_message = "github_repo_id must be numeric (or empty)."
+  }
+}
+
 variable "github_branch" {
   description = "Only workflow runs on this branch can assume the role."
   type        = string

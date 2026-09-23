@@ -124,6 +124,8 @@ module "github_oidc" {
   create_oidc_provider = true
   github_owner         = var.github_owner
   github_repo          = var.github_app_repo
+  github_owner_id      = var.github_owner_id
+  github_repo_id       = var.github_app_repo_id
   github_branch        = var.github_app_branch
   ecr_repository_arns  = values(module.ecr.repository_arns)
 }

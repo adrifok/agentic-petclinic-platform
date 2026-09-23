@@ -244,6 +244,18 @@ variable "github_app_repo" {
   default     = "spring-petclinic-microservices"
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub account ID of github_owner — required because the app fork sends immutable OIDC subject claims (repo:owner@id/repo@id). gh api users/adrifok -q .id"
+  type        = string
+  default     = "97637423"
+}
+
+variable "github_app_repo_id" {
+  description = "Numeric repository ID of the app fork, for immutable OIDC subject claims. gh api repos/adrifok/spring-petclinic-microservices -q .id"
+  type        = string
+  default     = "1351597478"
+}
+
 variable "github_app_branch" {
   description = "Only workflow runs on this branch of the app repo may assume the role."
   type        = string

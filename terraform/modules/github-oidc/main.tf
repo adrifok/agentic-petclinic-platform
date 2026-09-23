@@ -10,9 +10,13 @@
 # Implements PETPLAT-52. See docs/technical-spec.md#cicd-pipeline.
 
 locals {
-  name               = "${var.project}-${var.environment}-github-actions"
-  oidc_provider_arn  = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.existing_oidc_provider_arn
-  github_sub_subject = "repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/${var.github_branch}"
+  name              = "${var.project}-${var.environment}-github-actions"
+  oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.existing_oidc_provider_arn
+  # Repos with GitHub's immutable subject claims enabled send
+  # repo:{owner}@{owner_id}/{repo}@{repo_id}:... — the IDs survive renames,
+  # so a re-registered owner/repo name can't match. Legacy format otherwise.
+  github_repo_path   = var.github_owner_id != "" && var.github_repo_id != "" ? "${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}" : "${var.github_owner}/${var.github_repo}"
+  github_sub_subject = "repo:${local.github_repo_path}:ref:refs/heads/${var.github_branch}"
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -61,6 +65,11 @@ resource "aws_iam_role" "github_actions" {
     precondition {
       condition     = var.create_oidc_provider || var.existing_oidc_provider_arn != ""
       error_message = "existing_oidc_provider_arn must be set when create_oidc_provider is false."
+    }
+
+    precondition {
+      condition     = (var.github_owner_id == "") == (var.github_repo_id == "")
+      error_message = "github_owner_id and github_repo_id must be set together (immutable OIDC subject) or both left empty (legacy subject)."
     }
   }
 
