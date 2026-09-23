@@ -109,3 +109,21 @@ module "secrets" {
   openai_api_key              = var.openai_api_key
   secret_recovery_window_days = var.secret_recovery_window_days
 }
+
+# Implements PETPLAT-52 (OIDC federation for GitHub Actions). Dev owns the
+# account-global GitHub OIDC provider; prod must call this module with
+# create_oidc_provider = false and existing_oidc_provider_arn. The role
+# trusts only the app repo fork's main branch — see
+# docs/technical-spec.md#cicd-pipeline.
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  project     = var.project
+  environment = var.environment
+
+  create_oidc_provider = true
+  github_owner         = var.github_owner
+  github_repo          = var.github_app_repo
+  github_branch        = var.github_app_branch
+  ecr_repository_arns  = values(module.ecr.repository_arns)
+}

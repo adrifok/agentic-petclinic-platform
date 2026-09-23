@@ -229,3 +229,23 @@ variable "openai_api_key" {
   sensitive   = true
   default     = ""
 }
+
+# --- GitHub Actions OIDC (see docs/technical-spec.md#cicd-pipeline) ---
+
+variable "github_owner" {
+  description = "GitHub user owning the application repo fork (github.com/adrifok/spring-petclinic-microservices). The local app clone's origin points at upstream spring-petclinic, so this is set explicitly rather than derived from it."
+  type        = string
+  default     = "adrifok"
+}
+
+variable "github_app_repo" {
+  description = "Application repo whose build workflow may assume the GitHub Actions role (not the platform repo)."
+  type        = string
+  default     = "spring-petclinic-microservices"
+}
+
+variable "github_app_branch" {
+  description = "Only workflow runs on this branch of the app repo may assume the role."
+  type        = string
+  default     = "main"
+}

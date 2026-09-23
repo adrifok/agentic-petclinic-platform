@@ -1,0 +1,122 @@
+# Update image tags (PETPLAT-50, PETPLAT-87)
+#
+# Fired by the app repo's build-push.yml (PETPLAT-49) via repository_dispatch
+# once images are in ECR. Writes the SHA to image.tag in
+# helm-values/{service}.yaml and pushes; ArgoCD picks up the commit
+# (dev auto-sync, prod manual sync). No kubectl / cluster access here.
+#
+# Expected payload:
+#   { "event_type": "app-image-built",
+#     "client_payload": { "sha": "abc1234",
+#                         "services": ["customers-service", "vets-service"] } }
+# services may be a JSON array or a space-separated string. If it is omitted
+# or empty, all 8 services are updated — the build workflow should normally
+# send only the services it rebuilt, since an unbuilt service has no image
+# under the new SHA.
+name: update-image-tags
+
+on:
+  repository_dispatch:
+    types: [app-image-built]
+
+permissions:
+  contents: write
+
+# Serialize runs so two dispatches never race on the push to main.
+concurrency:
+  group: update-image-tags
+  cancel-in-progress: false
+
+jobs:
+  update-tags:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout platform repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      # Payload values go through env, never inline ${{ }} in run:, so a
+      # crafted payload cannot inject shell.
+      - name: Validate payload
+        id: payload
+        env:
+          SHA: ${{ github.event.client_payload.sha }}
+          SERVICES_JSON: ${{ toJSON(github.event.client_payload.services) }}
+        run: |
+          set -euo pipefail
+          all_services="config-server discovery-server api-gateway customers-service visits-service vets-service genai-service admin-server"
+
+          if [[ ! "${SHA}" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "::error::client_payload.sha must be a 7-40 char lowercase hex commit SHA"
+            exit 1
+          fi
+
+          services="$(jq -r 'if type == "array" then join(" ") elif type == "string" then . else "" end' <<< "${SERVICES_JSON}")"
+          [[ -z "${services// /}" ]] && services="${all_services}"
+
+          for s in ${services}; do
+            if [[ " ${all_services} " != *" ${s} "* ]]; then
+              echo "::error::unknown service in payload: ${s}"
+              exit 1
+            fi
+          done
+
+          {
+            echo "sha=${SHA}"
+            echo "services=$(tr -s ' ' <<< "${services}" | xargs)"
+          } >> "${GITHUB_OUTPUT}"
+
+      # Pinned + checksum-verified instead of relying on the runner image's
+      # yq (apt's "yq" on Ubuntu is a different, incompatible tool).
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.53.6
+          YQ_SHA256: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
+        run: |
+          set -euo pipefail
+          curl -sSLf -o /tmp/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+
+      - name: Update image.tag with yq
+        env:
+          SHA: ${{ steps.payload.outputs.sha }}
+          SERVICES: ${{ steps.payload.outputs.services }}
+        run: |
+          set -euo pipefail
+          yq --version
+          for s in ${SERVICES}; do
+            f="helm-values/${s}.yaml"
+            # yq keeps comments but drops blank lines; mark them so the
+            # commit diff is only the image.tag line.
+            sed -i 's/^$/#__BLANK__/' "${f}"
+            yq -i '.image.tag = strenv(SHA)' "${f}"
+            sed -i 's/^#__BLANK__$//' "${f}"
+            echo "${s}: image.tag=$(yq '.image.tag' "${f}")"
+          done
+
+      - name: Commit and push
+        env:
+          SHA: ${{ steps.payload.outputs.sha }}
+          SERVICES: ${{ steps.payload.outputs.services }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- helm-values/; then
+            echo "Tags already at ${SHA}, nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add helm-values/
+          git commit -m "ci: update image tags to ${SHA} (${SERVICES// /, })"
+
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            echo "Push rejected (attempt ${attempt}), rebasing on latest main..."
+            git pull --rebase origin main
+          done
+          echo "::error::failed to push after 3 attempts"
+          exit 1

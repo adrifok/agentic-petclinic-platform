@@ -187,3 +187,13 @@ output "openai_secret_name" {
   description = "Dev Secrets Manager secret name for the OpenAI API key."
   value       = module.secrets.openai_secret_name
 }
+
+output "github_actions_role_arn" {
+  description = "Dev GitHub Actions OIDC role ARN — set as the AWS_ROLE_ARN secret in the app repo fork (PETPLAT-52)."
+  value       = module.github_oidc.role_arn
+}
+
+output "github_actions_trusted_subject" {
+  description = "Exact OIDC sub claim the GitHub Actions role trusts."
+  value       = module.github_oidc.trusted_subject
+}

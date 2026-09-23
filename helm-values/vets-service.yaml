@@ -4,6 +4,7 @@
 # @Profile("production") — see docs/technical-spec.md#spring-profiles.
 image:
   repository: vets-service
+  tag: v1.0.0 # updated by CI (update-image-tags.yml) to the 7-char commit SHA
 
 service:
   port: 8083

@@ -5,6 +5,7 @@ component: gateway
 
 image:
   repository: api-gateway
+  tag: v1.0.0 # updated by CI (update-image-tags.yml) to the 7-char commit SHA
 
 service:
   port: 8080
