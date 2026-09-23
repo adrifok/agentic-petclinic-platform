@@ -88,6 +88,11 @@ output "lb_controller_role_arn" {
   value       = module.eks.lb_controller_role_arn
 }
 
+output "eso_role_arn" {
+  description = "Dev IRSA role ARN for the External Secrets Operator ServiceAccount — pass to scripts/install-external-secrets.sh (PETPLAT-37)."
+  value       = module.eks.eso_role_arn
+}
+
 output "kubeconfig_command" {
   description = "Command to update local kubeconfig for the dev cluster."
   value       = module.eks.kubeconfig_command
@@ -171,4 +176,24 @@ output "dns_record_name" {
 output "dns_alb_record_fqdn" {
   description = "FQDN of the created ALB alias record, or null until dns_create_alb_record is set to true (PETPLAT-31)."
   value       = module.dns.alb_record_fqdn
+}
+
+output "openai_secret_arn" {
+  description = "Dev Secrets Manager ARN for the OpenAI API key."
+  value       = module.secrets.openai_secret_arn
+}
+
+output "openai_secret_name" {
+  description = "Dev Secrets Manager secret name for the OpenAI API key."
+  value       = module.secrets.openai_secret_name
+}
+
+output "github_actions_role_arn" {
+  description = "Dev GitHub Actions OIDC role ARN — set as the AWS_ROLE_ARN secret in the app repo fork (PETPLAT-52)."
+  value       = module.github_oidc.role_arn
+}
+
+output "github_actions_trusted_subject" {
+  description = "Exact OIDC sub claim the GitHub Actions role trusts."
+  value       = module.github_oidc.trusted_subject
 }

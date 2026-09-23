@@ -83,6 +83,11 @@ output "ebs_csi_role_arn" {
   value       = module.eks.ebs_csi_role_arn
 }
 
+output "eso_role_arn" {
+  description = "Prod IRSA role ARN for the External Secrets Operator ServiceAccount — pass to scripts/install-external-secrets.sh (PETPLAT-37)."
+  value       = module.eks.eso_role_arn
+}
+
 output "kubeconfig_command" {
   description = "Command to update local kubeconfig for the prod cluster."
   value       = module.eks.kubeconfig_command
@@ -131,4 +136,14 @@ output "rds_secret_arn" {
 output "rds_secret_name" {
   description = "Prod Secrets Manager secret name for RDS credentials."
   value       = module.rds.secret_name
+}
+
+output "openai_secret_arn" {
+  description = "Prod Secrets Manager ARN for the OpenAI API key."
+  value       = module.secrets.openai_secret_arn
+}
+
+output "openai_secret_name" {
+  description = "Prod Secrets Manager secret name for the OpenAI API key."
+  value       = module.secrets.openai_secret_name
 }

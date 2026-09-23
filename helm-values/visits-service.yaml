@@ -1,0 +1,35 @@
+# visits-service (PETPLAT-41) — DB-backed, waits on Config Server, Discovery
+# Server, AND Customers Service before starting. The extra customers-service
+# wait isn't optional: visits' schema.sql has FOREIGN KEY (pet_id)
+# REFERENCES pets(id), and "pets" is created by customers-service's own
+# schema init — see docs/technical-spec.md#application-services and
+# k8s/base/visits-service/deployment.yaml for the full rationale.
+image:
+  repository: visits-service
+  tag: v1.0.0 # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+
+service:
+  port: 8082
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker,mysql"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+
+datasource:
+  enabled: true
+
+secretEnv:
+  - name: SPRING_DATASOURCE_USERNAME
+    secretName: rds-credentials
+    secretKey: username
+  - name: SPRING_DATASOURCE_PASSWORD
+    secretName: rds-credentials
+    secretKey: password
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health
+  - name: wait-for-discovery-server
+    url: http://discovery-server:8761/actuator/health
+  - name: wait-for-customers-service
+    url: http://customers-service:8081/actuator/health

@@ -142,9 +142,10 @@ data "aws_iam_policy_document" "flow_log_kms" {
 }
 
 resource "aws_kms_key" "flow_log" {
-  description         = "VPC flow log encryption for ${local.name_prefix}"
-  enable_key_rotation = true
-  policy              = data.aws_iam_policy_document.flow_log_kms.json
+  description             = "VPC flow log encryption for ${local.name_prefix}"
+  enable_key_rotation     = true
+  deletion_window_in_days = var.kms_deletion_window_days
+  policy                  = data.aws_iam_policy_document.flow_log_kms.json
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-vpc-flow-log-kms"

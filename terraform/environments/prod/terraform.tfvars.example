@@ -2,3 +2,9 @@
 aws_region  = "eu-central-1"
 environment = "prod"
 project     = "petclinic"
+
+# OpenAI API key for genai-service (PETPLAT-33) — replace before running
+# terraform apply. Stored in Secrets Manager as petclinic/prod/openai-api-key,
+# never hardcoded in any committed file. Get a key at
+# https://platform.openai.com/api-keys.
+openai_api_key = "REPLACE_ME"

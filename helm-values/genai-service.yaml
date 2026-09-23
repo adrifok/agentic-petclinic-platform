@@ -1,0 +1,27 @@
+# genai-service (PETPLAT-42) — waits on Config Server and Discovery Server.
+# OPENAI_API_KEY comes from the "openai-api-key" K8s Secret synced by ESO
+# (k8s/base/external-secrets/openai-api-key.yaml) — that secret only exists
+# once a real key is set. Until then this Deployment sits in
+# CreateContainerConfigError, which is expected while genai-service is
+# intentionally skipped.
+image:
+  repository: genai-service
+  tag: v1.0.0 # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+
+service:
+  port: 8084
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+
+secretEnv:
+  - name: OPENAI_API_KEY
+    secretName: openai-api-key
+    secretKey: OPENAI_API_KEY
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health
+  - name: wait-for-discovery-server
+    url: http://discovery-server:8761/actuator/health

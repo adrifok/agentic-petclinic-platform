@@ -100,6 +100,23 @@ variable "eks_cluster_log_retention_days" {
   default     = 30
 }
 
+variable "kms_deletion_window_days" {
+  description = "Waiting period before dev's KMS keys (eks_secrets, flow_log) are actually deleted after terraform destroy. 7 (the AWS minimum) — dev is torn down/rebuilt regularly to control cost (see scripts/stop-env.sh), so this caps the lingering per-key cost instead of the 30-day default."
+  type        = number
+  default     = 7
+}
+
+variable "secret_recovery_window_days" {
+  description = "Waiting period before dev's Secrets Manager secrets (rds-credentials, openai-api-key) are actually deleted after terraform destroy. 0 — dev is torn down/rebuilt regularly (see scripts/stop-env.sh); a nonzero window leaves a secret in a pending-deletion state that blocks the next apply from recreating it (name collision) until the window elapses or it's manually restored/force-deleted."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.secret_recovery_window_days == 0 || (var.secret_recovery_window_days >= 7 && var.secret_recovery_window_days <= 30)
+    error_message = "secret_recovery_window_days must be 0 (immediate delete) or between 7 and 30 (AWS Secrets Manager limits)."
+  }
+}
+
 # --- ECR (see docs/technical-spec.md#ecr-container-registry) ---
 
 variable "ecr_service_names" {
@@ -202,4 +219,33 @@ variable "dns_alb_zone_id" {
   description = "Canonical hosted zone ID of the dev ALB (from `aws elbv2 describe-load-balancers`). Required when dns_create_alb_record is true."
   type        = string
   default     = ""
+}
+
+# --- Secrets (see docs/technical-spec.md#secrets-management) ---
+
+variable "openai_api_key" {
+  description = "OpenAI API key for genai-service, stored in Secrets Manager as petclinic/dev/openai-api-key. Set the real value in terraform.tfvars (gitignored) or TF_VAR_openai_api_key — never commit it. genai-service is optional — leave unset (empty) to skip it."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# --- GitHub Actions OIDC (see docs/technical-spec.md#cicd-pipeline) ---
+
+variable "github_owner" {
+  description = "GitHub user owning the application repo fork (github.com/adrifok/spring-petclinic-microservices). The local app clone's origin points at upstream spring-petclinic, so this is set explicitly rather than derived from it."
+  type        = string
+  default     = "adrifok"
+}
+
+variable "github_app_repo" {
+  description = "Application repo whose build workflow may assume the GitHub Actions role (not the platform repo)."
+  type        = string
+  default     = "spring-petclinic-microservices"
+}
+
+variable "github_app_branch" {
+  description = "Only workflow runs on this branch of the app repo may assume the role."
+  type        = string
+  default     = "main"
 }

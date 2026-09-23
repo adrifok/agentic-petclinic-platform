@@ -1,0 +1,29 @@
+# customers-service (PETPLAT-41) — DB-backed, waits on Config Server and
+# Discovery Server before starting.
+image:
+  repository: customers-service
+  tag: v1.0.0 # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+
+service:
+  port: 8081
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker,mysql"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+
+datasource:
+  enabled: true
+
+secretEnv:
+  - name: SPRING_DATASOURCE_USERNAME
+    secretName: rds-credentials
+    secretKey: username
+  - name: SPRING_DATASOURCE_PASSWORD
+    secretName: rds-credentials
+    secretKey: password
+
+initContainers:
+  - name: wait-for-config-server
+    url: http://config-server:8888/actuator/health
+  - name: wait-for-discovery-server
+    url: http://discovery-server:8761/actuator/health

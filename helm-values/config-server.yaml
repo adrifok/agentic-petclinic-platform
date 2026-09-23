@@ -1,0 +1,22 @@
+# config-server (PETPLAT-39) — must start first, nothing precedes it, so no
+# init containers. Matches k8s/base/config-server/.
+component: server
+
+image:
+  repository: config-server
+  tag: v1.0.0 # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+
+service:
+  port: 8888
+
+configMap:
+  SPRING_PROFILES_ACTIVE: "docker"
+  GIT_REPO: "https://github.com/spring-petclinic/spring-petclinic-microservices-config"
+
+# Config Server has no separate readiness/liveness health groups configured
+# — all three probes hit /actuator/health.
+probes:
+  readiness:
+    path: /actuator/health
+  liveness:
+    path: /actuator/health

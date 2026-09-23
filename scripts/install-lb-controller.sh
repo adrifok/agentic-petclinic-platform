@@ -9,15 +9,22 @@
 # Idempotent — safe to re-run. See CHART_VERSION/CRDS_URL below to bump.
 #
 # Usage:
-#   ./scripts/install-lb-controller.sh <environment> [--region eu-central-1] [--role-arn <arn>]
+#   ./scripts/install-lb-controller.sh <environment> [--region eu-central-1] [--role-arn <arn>] [--vpc-id <id>]
 #
 # Examples:
 #   ./scripts/install-lb-controller.sh dev
 #   ./scripts/install-lb-controller.sh prod --region eu-central-1
 #
-# LB_CONTROLLER_ROLE_ARN can be set in the environment instead of --role-arn;
-# otherwise this script reads it from `terraform output` in
-# terraform/environments/<environment>/ (requires that stack to be applied).
+# LB_CONTROLLER_ROLE_ARN/LB_CONTROLLER_VPC_ID can be set in the environment
+# instead of --role-arn/--vpc-id; otherwise this script reads both from
+# `terraform output` in terraform/environments/<environment>/ (requires that
+# stack to be applied).
+#
+# vpcId is passed explicitly rather than left for the chart to auto-detect
+# via EC2 instance metadata: node launch templates set
+# http_put_response_hop_limit = 1 (IMDSv2 hardening, terraform/modules/eks/main.tf)
+# which blocks pods from reaching IMDS, so auto-detection hangs and the
+# controller CrashLoopBackOffs.
 #
 # See docs/technical-spec.md#dns-and-ingress and #irsa-roles.
 
@@ -25,6 +32,7 @@ set -euo pipefail
 
 REGION="${AWS_DEFAULT_REGION:-eu-central-1}"
 ROLE_ARN="${LB_CONTROLLER_ROLE_ARN:-}"
+VPC_ID="${LB_CONTROLLER_VPC_ID:-}"
 ENV=""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,7 +48,7 @@ CHART_VERSION="3.5.0"
 CRDS_URL="https://raw.githubusercontent.com/aws/eks-charts/v0.0.244/stable/aws-load-balancer-controller/crds/crds.yaml"
 
 usage() {
-  echo "Usage: $0 <environment> [--region <aws-region>] [--role-arn <arn>]"
+  echo "Usage: $0 <environment> [--region <aws-region>] [--role-arn <arn>] [--vpc-id <id>]"
   echo "  environment: dev | prod"
   exit 1
 }
@@ -63,6 +71,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --role-arn)
       ROLE_ARN="$2"
+      shift 2
+      ;;
+    --vpc-id)
+      VPC_ID="$2"
       shift 2
       ;;
     -h|--help)
@@ -90,12 +102,15 @@ echo "  Region:      ${REGION}"
 echo "============================================"
 echo ""
 
-# --- Resolve IRSA role ARN ---
-if [[ -z "${ROLE_ARN}" ]]; then
+# --- Resolve IRSA role ARN + VPC ID ---
+if [[ -z "${ROLE_ARN}" || -z "${VPC_ID}" ]]; then
   command -v terraform >/dev/null 2>&1 || {
-    echo "Error: no --role-arn given, LB_CONTROLLER_ROLE_ARN not set, and terraform not found to look it up." >&2
+    echo "Error: no --role-arn/--vpc-id given, LB_CONTROLLER_ROLE_ARN/LB_CONTROLLER_VPC_ID not set, and terraform not found to look them up." >&2
     exit 1
   }
+fi
+
+if [[ -z "${ROLE_ARN}" ]]; then
   echo "[1/6] Reading lb_controller_role_arn from terraform output (${TF_DIR})"
   ROLE_ARN="$(terraform -chdir="${TF_DIR}" output -raw lb_controller_role_arn 2>/dev/null || true)"
   if [[ -z "${ROLE_ARN}" ]]; then
@@ -107,6 +122,20 @@ else
   echo "[1/6] Using provided IRSA role ARN"
 fi
 echo "  -> ${ROLE_ARN}"
+echo ""
+
+if [[ -z "${VPC_ID}" ]]; then
+  echo "[1/6] Reading vpc_id from terraform output (${TF_DIR})"
+  VPC_ID="$(terraform -chdir="${TF_DIR}" output -raw vpc_id 2>/dev/null || true)"
+  if [[ -z "${VPC_ID}" ]]; then
+    echo "Error: could not read vpc_id. Apply terraform/environments/${ENV} first," >&2
+    echo "       or pass --vpc-id <id> / set LB_CONTROLLER_VPC_ID." >&2
+    exit 1
+  fi
+else
+  echo "[1/6] Using provided VPC ID"
+fi
+echo "  -> ${VPC_ID}"
 echo ""
 
 # --- kubeconfig ---
@@ -141,6 +170,7 @@ helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-contro
   --set serviceAccount.create=true \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${ROLE_ARN}" \
+  --set vpcId="${VPC_ID}" \
   --wait --timeout 5m
 
 echo ""
