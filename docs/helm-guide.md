@@ -113,7 +113,7 @@ Change resources, replicas, or environment variables
 
 Resources (CPU/memory requests+limits): set resources in the service's
 helm-values file if it needs to differ from the chart default
-(100m/128Mi request, 500m/512Mi limit) — see helm-values/api-gateway.yaml
+(100m/384Mi request, 500m/512Mi limit) — see helm-values/api-gateway.yaml
 for an example (200m/1000m CPU, since it fronts all incoming traffic).
 
 Replicas: dev is always 1 (chart default, not overridden anywhere). For
