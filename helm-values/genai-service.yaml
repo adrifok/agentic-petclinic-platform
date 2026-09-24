@@ -4,6 +4,11 @@
 # once a real key is set. Until then this Deployment sits in
 # CreateContainerConfigError, which is expected while genai-service is
 # intentionally skipped.
+#
+# Scaled to 0 while there is no OpenAI key: frees a pod slot on the t4g.small
+# nodes, and keeps ArgoCD from syncing a pod that can never start.
+replicaCount: 0
+
 image:
   repository: genai-service
   tag: fcd507d # updated by CI (update-image-tags.yml) to the 7-char commit SHA

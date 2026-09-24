@@ -360,6 +360,7 @@ resource "aws_eks_node_group" "this" {
     aws_iam_role_policy_attachment.node_worker,
     aws_iam_role_policy_attachment.node_cni,
     aws_iam_role_policy_attachment.node_ecr,
+    aws_eks_addon.vpc_cni,
   ]
 }
 
@@ -529,6 +530,16 @@ resource "aws_eks_addon" "vpc_cni" {
   addon_version               = coalesce(var.vpc_cni_addon_version, data.aws_eks_addon_version.vpc_cni.version)
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
+
+  # Prefix delegation assigns /28 prefixes instead of single IPs per ENI slot,
+  # lifting t4g.small from 11 pods/node to the kubelet cap. Only nodes launched
+  # after this is set get the higher max-pods, hence the node group depends_on.
+  configuration_values = var.enable_prefix_delegation ? jsonencode({
+    env = {
+      ENABLE_PREFIX_DELEGATION = "true"
+      WARM_PREFIX_TARGET       = "1"
+    }
+  }) : null
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-vpc-cni"
