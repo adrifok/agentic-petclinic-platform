@@ -179,6 +179,12 @@ variable "vpc_cni_addon_version" {
   default     = null
 }
 
+variable "enable_prefix_delegation" {
+  description = "Enable VPC CNI prefix delegation to raise max pods per node. Changing it on a running cluster only affects nodes launched afterwards."
+  type        = bool
+  default     = true
+}
+
 variable "ebs_csi_addon_version" {
   description = "Explicit aws-ebs-csi-driver add-on version to pin. Null resolves to the most recent version compatible with cluster_version."
   type        = string
