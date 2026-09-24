@@ -62,3 +62,6 @@ package-lock.json
 *.bak
 *.log
 tmp/
+
+# Personal Claude Code settings (per-user, not shared)
+.claude/settings.local.json
