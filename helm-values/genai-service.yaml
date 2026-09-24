@@ -23,7 +23,7 @@ configMap:
 secretEnv:
   - name: OPENAI_API_KEY
     secretName: openai-api-key
-    secretKey: OPENAI_API_KEY
+    secretKey: 000000
 
 initContainers:
   - name: wait-for-config-server
