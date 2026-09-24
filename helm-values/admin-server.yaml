@@ -4,7 +4,7 @@ component: admin
 
 image:
   repository: admin-server
-  tag: 61cba5e # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+  tag: fcd507d # updated by CI (update-image-tags.yml) to the 7-char commit SHA
 
 service:
   port: 9090
