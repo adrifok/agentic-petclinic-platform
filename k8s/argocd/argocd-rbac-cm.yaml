@@ -1,0 +1,36 @@
+# ArgoCD RBAC (PETPLAT-115). Overrides the empty argocd-rbac-cm shipped in
+# install.yaml. Policy objects for applications are <project>/<app-name>;
+# Application names end in -dev / -prod, which is what scopes sync rights.
+#
+# role:admin      built-in: full access to all apps, projects, settings.
+# role:developer  view everything, sync/refresh dev apps only, never prod.
+# policy.default is empty: an authenticated user with no group mapping
+# gets no access.
+#
+# Group bindings (g, ...) map SSO/local groups to roles. SSO is not
+# configured yet (optional future enhancement); the built-in local "admin"
+# account already has role:admin.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.default: ""
+  scopes: "[groups]"
+  policy.csv: |
+    p, role:developer, applications, get, */*, allow
+    p, role:developer, applications, sync, default/*-dev, allow
+    p, role:developer, applications, action/*, default/*-dev, allow
+    p, role:developer, applications, sync, default/*-prod, deny
+    p, role:developer, applications, action/*, default/*-prod, deny
+    p, role:developer, projects, get, *, allow
+    p, role:developer, clusters, get, *, allow
+    p, role:developer, repositories, get, *, allow
+    p, role:developer, logs, get, */*-dev, allow
+
+    g, petclinic-admins, role:admin
+    g, petclinic-developers, role:developer

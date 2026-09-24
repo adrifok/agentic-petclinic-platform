@@ -1,0 +1,33 @@
+# ArgoCD Application: discovery-server in prod (PETPLAT-114). Manual sync only:
+#   argocd app sync discovery-server-prod
+# releaseName must equal the service name: the chart uses .Release.Name for
+# resource names (Service DNS) and the perService lookup in prod.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: discovery-server-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: discovery-server
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: kubectl
+    environment: prod
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/adrifok/agentic-petclinic-platform.git
+    targetRevision: main
+    path: helm/petclinic-service
+    helm:
+      releaseName: discovery-server
+      valueFiles:
+        - ../../helm-values/discovery-server.yaml
+        - ../../helm-values/prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: petclinic-prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
