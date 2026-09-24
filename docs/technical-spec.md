@@ -611,16 +611,16 @@ The startupProbe runs first and disables readiness and liveness checks until Spr
 
 | Service | CPU Request | CPU Limit | Memory Request | Memory Limit |
 |---------|-------------|-----------|----------------|--------------|
-| config-server | 100m | 500m | 128Mi | 512Mi |
-| discovery-server | 100m | 500m | 128Mi | 512Mi |
-| api-gateway | 200m | 1000m | 128Mi | 512Mi |
-| customers-service | 100m | 500m | 128Mi | 512Mi |
-| visits-service | 100m | 500m | 128Mi | 512Mi |
-| vets-service | 100m | 500m | 128Mi | 512Mi |
-| genai-service | 100m | 500m | 128Mi | 512Mi |
-| admin-server | 100m | 500m | 128Mi | 512Mi |
+| config-server | 100m | 500m | 384Mi | 512Mi |
+| discovery-server | 100m | 500m | 384Mi | 512Mi |
+| api-gateway | 200m | 1000m | 384Mi | 512Mi |
+| customers-service | 100m | 500m | 384Mi | 512Mi |
+| visits-service | 100m | 500m | 384Mi | 512Mi |
+| vets-service | 100m | 500m | 384Mi | 512Mi |
+| genai-service | 100m | 500m | 384Mi | 512Mi |
+| admin-server | 100m | 500m | 384Mi | 512Mi |
 
-API Gateway gets higher CPU (200m/1000m) because it handles all incoming traffic routing. Memory requests are set to 128Mi (with 512Mi limit) to fit on t4g.small nodes (2 GiB RAM). Spring Boot services idle around 200-300 MiB — the 512Mi limit provides headroom for spikes.
+API Gateway gets higher CPU (200m/1000m) because it handles all incoming traffic routing. Memory requests are set to 384Mi (with 512Mi limit), close to real Spring Boot usage (~300-400 MiB), so the scheduler spreads JVMs across nodes. 128Mi requests let 5 JVMs pack onto one t4g.small (2 GiB RAM) and hang the node (2026-09-24). At most 3 services fit per t4g.small; dev runs 3 nodes.
 
 ### Environment Variables per Service
 
@@ -1297,7 +1297,7 @@ service:
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 384Mi
   limits:
     cpu: 500m
     memory: 512Mi
