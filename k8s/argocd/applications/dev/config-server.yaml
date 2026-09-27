@@ -1,0 +1,35 @@
+# ArgoCD Application: config-server in dev (PETPLAT-113). Auto-sync from main.
+# releaseName must equal the service name: the chart uses .Release.Name for
+# resource names (Service DNS) and the perService lookup in prod.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: config-server-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: config-server
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: kubectl
+    environment: dev
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/adrifok/agentic-petclinic-platform.git
+    targetRevision: main
+    path: helm/petclinic-service
+    helm:
+      releaseName: config-server
+      valueFiles:
+        - ../../helm-values/config-server.yaml
+        - ../../helm-values/dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: petclinic-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
