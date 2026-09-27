@@ -60,7 +60,7 @@ Every Deployment MUST include:
    ```yaml
    resources:
      requests:
-       memory: "128Mi"
+       memory: "384Mi"
        cpu: "250m"
      limits:
        memory: "512Mi"
