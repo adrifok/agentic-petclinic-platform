@@ -149,13 +149,15 @@ spec:
             initialDelaySeconds: 60
             periodSeconds: 20
             failureThreshold: 5
+          # Grafana 13 loads several bundled app plugins at startup; 256Mi
+          # was OOMKilled as soon as the UI opened dashboards (2026-09-29).
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 250m
-              memory: 256Mi
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
