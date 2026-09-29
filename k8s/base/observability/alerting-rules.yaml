@@ -1,0 +1,169 @@
+# Alerting rules (PETPLAT-58, PETPLAT-59) — docs/technical-spec.md#alert-rules-prometheus
+# and #loki-alert-rules. Expressions, `for` durations and severities match the
+# spec tables exactly.
+#
+# Three objects, same rules:
+#   1. PrometheusRule CR — the Prometheus Operator format. Prometheus here is a
+#      plain Deployment (no Operator), so nothing reconciles this CR; it is kept
+#      as the portable source of truth for a future Operator/kube-prometheus
+#      migration. Needs the CRD installed:
+#        kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.1/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
+#   2. prometheus-rules ConfigMap — what Prometheus actually evaluates
+#      (mounted at /etc/prometheus/rules, loaded via rule_files).
+#   3. loki-rules ConfigMap — LogQL rules evaluated by the Loki ruler, which
+#      sends to the same Alertmanager.
+# Keep 1 and 2 in sync when editing a metric rule.
+#
+# Known gaps (data not collected by the 5-service scrape config):
+#   - PodRestartLoop needs kube-state-metrics (kube_pod_container_status_restarts_total).
+#   - HighMemoryUsage needs cAdvisor/kubelet metrics (container_memory_*).
+#   Both evaluate to "no data" (never fire) until those sources are scraped.
+#   - ServiceDown fires for genai-service while dev runs it at replicaCount 0;
+#     silence it in Alertmanager (see alertmanager.yaml header).
+#   - HighLatency needs http_server_requests_seconds_bucket, enabled per
+#     service via MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILESHISTOGRAM_HTTP_SERVER_REQUESTS
+#     in helm-values.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: petclinic-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: petclinic-alerts
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+spec:
+  groups:
+    - name: petclinic.rules
+      rules:
+        - alert: ServiceDown
+          expr: up == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.job }} is down"
+            description: "Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }}) for more than 1 minute."
+        - alert: HighErrorRate
+          expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) / rate(http_server_requests_seconds_count[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High 5xx rate on {{ $labels.job }}"
+            description: "More than 5% of requests to {{ $labels.job }} {{ $labels.uri }} returned 5xx over 5 minutes."
+        - alert: HighLatency
+          expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High p95 latency on {{ $labels.job }}"
+            description: "p95 latency on {{ $labels.job }} {{ $labels.uri }} is above 500ms for 5 minutes."
+        - alert: PodRestartLoop
+          expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} is restarting"
+            description: "Container {{ $labels.container }} restarted more than 3 times in 15 minutes."
+        - alert: HighMemoryUsage
+          expr: container_memory_working_set_bytes / container_spec_memory_limit_bytes > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage in {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Container {{ $labels.container }} is using more than 80% of its memory limit."
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+data:
+  petclinic-alerts.yaml: |
+    groups:
+      - name: petclinic.rules
+        rules:
+          - alert: ServiceDown
+            expr: up == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.job }} is down"
+              description: "Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }}) for more than 1 minute."
+          - alert: HighErrorRate
+            expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) / rate(http_server_requests_seconds_count[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High 5xx rate on {{ $labels.job }}"
+              description: "More than 5% of requests to {{ $labels.job }} {{ $labels.uri }} returned 5xx over 5 minutes."
+          - alert: HighLatency
+            expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 0.5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High p95 latency on {{ $labels.job }}"
+              description: "p95 latency on {{ $labels.job }} {{ $labels.uri }} is above 500ms for 5 minutes."
+          - alert: PodRestartLoop
+            expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.namespace }}/{{ $labels.pod }} is restarting"
+              description: "Container {{ $labels.container }} restarted more than 3 times in 15 minutes."
+          - alert: HighMemoryUsage
+            expr: container_memory_working_set_bytes / container_spec_memory_limit_bytes > 0.8
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage in {{ $labels.namespace }}/{{ $labels.pod }}"
+              description: "Container {{ $labels.container }} is using more than 80% of its memory limit."
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+data:
+  # Mounted at /etc/loki/rules/fake/ — "fake" is Loki's tenant ID when
+  # auth_enabled is false.
+  petclinic-log-alerts.yaml: |
+    groups:
+      - name: petclinic.log.rules
+        rules:
+          - alert: LogErrorSpike
+            expr: rate({namespace=~"petclinic-.*"} |= "ERROR" [5m]) > 0.5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "ERROR log spike in {{ $labels.namespace }}/{{ $labels.container }}"
+              description: "More than 0.5 ERROR lines/s over 5 minutes."
+          - alert: JVMOutOfMemory
+            expr: count_over_time({namespace=~"petclinic-.*"} |= "OutOfMemoryError" [5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "OutOfMemoryError in {{ $labels.namespace }}/{{ $labels.container }}"
+              description: "A JVM logged OutOfMemoryError in the last 5 minutes."

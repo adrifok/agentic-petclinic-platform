@@ -1,0 +1,176 @@
+# Alertmanager (PETPLAT-103) — docs/technical-spec.md#alertmanager
+#
+# Receives alerts from Prometheus (alerting.alertmanagers in prometheus.yaml)
+# and from the Loki ruler (ruler.alertmanager_url in loki.yaml).
+#   critical -> slack-critical, sent immediately (group_wait 0s)
+#   warning  -> slack-warning, batched (group_interval 5m)
+# The Slack webhook URL is read from a file mounted from the alertmanager-slack
+# Secret (ExternalSecret in external-secrets.yaml), never from this ConfigMap.
+#
+# Maintenance windows / known noise: use silences, e.g. genai-service runs at
+# replicaCount 0 in dev, so ServiceDown fires for it:
+#   kubectl -n monitoring exec deploy/alertmanager -- amtool silence add \
+#     --alertmanager.url=http://localhost:9093 --duration=720h \
+#     --comment="genai-service scaled to 0 in dev" alertname=ServiceDown job=genai-service
+#
+# Send a test alert (PETPLAT-103 acceptance):
+#   kubectl -n monitoring exec deploy/alertmanager -- amtool alert add \
+#     --alertmanager.url=http://localhost:9093 alertname=TestAlert severity=critical
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      receiver: slack-warning
+      group_by: [alertname, job, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - matchers: ['severity="critical"']
+          receiver: slack-critical
+          group_wait: 0s
+          group_interval: 1m
+          repeat_interval: 1h
+        - matchers: ['severity="warning"']
+          receiver: slack-warning
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 4h
+
+    # A critical alert mutes warnings for the same job/namespace (e.g. a
+    # service that is down also stops reporting error rate/latency).
+    inhibit_rules:
+      - source_matchers: ['severity="critical"']
+        target_matchers: ['severity="warning"']
+        equal: [job, namespace]
+
+    receivers:
+      - name: slack-critical
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/webhook-url
+            send_resolved: true
+            title: '[CRITICAL] {{ .CommonLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}: {{ .Annotations.description }}{{ "\n" }}{{ end }}'
+      - name: slack-warning
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/webhook-url
+            send_resolved: true
+            title: '[WARNING] {{ .CommonLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}: {{ .Annotations.description }}{{ "\n" }}{{ end }}'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alertmanager
+        app.kubernetes.io/part-of: petclinic
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: observability
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.34.1
+          args:
+            - --config.file=/etc/alertmanager/config/alertmanager.yml
+            # Silences/notification log live here; emptyDir means silences
+            # are lost on pod restart (acceptable for dev, no PV).
+            - --storage.path=/alertmanager
+            - --cluster.listen-address=
+          ports:
+            - name: http
+              containerPort: 9093
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager/config
+              readOnly: true
+            - name: slack
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
+            - name: storage
+              mountPath: /alertmanager
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+        - name: slack
+          secret:
+            secretName: alertmanager-slack
+        - name: storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: http

@@ -1,0 +1,20 @@
+# Namespaces for the observability stack (E-11).
+#   monitoring: Prometheus, Alertmanager, Grafana, Loki, FluentBit
+#   tracing:    Zipkin (apps send spans to http://zipkin.tracing:9411)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tracing
+  labels:
+    app.kubernetes.io/name: tracing
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm

@@ -1,0 +1,47 @@
+# Observability stack (E-11) — apply the whole directory in one go:
+#   kubectl apply -k k8s/base/observability/
+#
+# Prerequisites (once per cluster/environment):
+#   1. PrometheusRule CRD (alerting-rules.yaml uses it):
+#        kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.1/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
+#   2. Secrets Manager secrets petclinic/dev/grafana-admin and
+#      petclinic/dev/alertmanager-slack (commands in external-secrets.yaml).
+#
+# The grafana-dashboards ConfigMap is generated from grafana-dashboards/*.json
+# (PETPLAT-57), so the JSON files stay the single source of truth.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespaces.yaml
+  - storageclass.yaml
+  - external-secrets.yaml
+  - prometheus.yaml
+  - alerting-rules.yaml
+  - alertmanager.yaml
+  - loki.yaml
+  - fluentbit.yaml
+  - grafana.yaml
+  - zipkin.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+
+configMapGenerator:
+  - name: grafana-dashboards
+    namespace: monitoring
+    options:
+      labels:
+        app.kubernetes.io/name: grafana
+    files:
+      - grafana-dashboards/overview.json
+      - grafana-dashboards/jvm.json
+      - grafana-dashboards/service-api-gateway.json
+      - grafana-dashboards/service-customers-service.json
+      - grafana-dashboards/service-visits-service.json
+      - grafana-dashboards/service-vets-service.json
+      - grafana-dashboards/service-genai-service.json
