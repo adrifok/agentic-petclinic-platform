@@ -1,7 +1,10 @@
 # Prod environment overrides (PETPLAT-46, PETPLAT-47) — merged on top of
-# each helm-values/{service}.yaml:
-#   helm upgrade --install <service> helm/petclinic-service/ -n petclinic-prod \
-#     -f helm-values/<service>.yaml -f helm-values/prod.yaml --set image.tag=<sha>
+# each helm-values/{service}.yaml by the ArgoCD Applications in
+# k8s/argocd/applications/prod/ (valueFiles: <service>.yaml, then prod.yaml).
+# Prod is manual sync: `argocd app sync <service>-prod`. To preview a render
+# locally:
+#   helm template <service> helm/petclinic-service/ \
+#     -f helm-values/<service>.yaml -f helm-values/prod.yaml
 #
 # Replica counts, HPA targets, and PDB settings are NOT blanket values —
 # they're per-service, keyed by release name below (`perService`), matching

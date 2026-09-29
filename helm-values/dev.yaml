@@ -1,7 +1,11 @@
 # Dev environment overrides (PETPLAT-45) — merged on top of each
-# helm-values/{service}.yaml:
-#   helm upgrade --install <service> helm/petclinic-service/ -n petclinic-dev \
-#     -f helm-values/<service>.yaml -f helm-values/dev.yaml --set image.tag=<sha>
+# helm-values/{service}.yaml by the ArgoCD Applications in
+# k8s/argocd/applications/dev/ (valueFiles: <service>.yaml, then dev.yaml).
+# Dev auto-syncs with selfHeal, so don't `helm upgrade` these releases by
+# hand — ArgoCD reverts it. image.tag lives in each <service>.yaml and is
+# written by CI (update-image-tags.yml). To preview a render locally:
+#   helm template <service> helm/petclinic-service/ \
+#     -f helm-values/<service>.yaml -f helm-values/dev.yaml
 #
 # Replicas=1, no HPA, no PDB are already the chart's defaults
 # (helm/petclinic-service/values.yaml) — nothing to override here for those.
@@ -10,9 +14,9 @@ image:
   registry: "284495578524.dkr.ecr.eu-central-1.amazonaws.com/petclinic-dev"
   pullPolicy: Always
 
-# Live dev RDS endpoint (as of the last rebuild) — re-fill the same way as
-# k8s/base/customers-service/configmap.yaml once the RDS instance is
-# recreated:
+# Live dev RDS endpoint (as of the last rebuild). The hostname hash is per
+# account+region, so it usually survives an RDS recreate — compare before
+# editing:
 #   terraform -chdir=terraform/environments/dev output -raw rds_endpoint
 datasource:
   url: "jdbc:mysql://petclinic-dev-mysql.c9eeoak8as0x.eu-central-1.rds.amazonaws.com:3306/petclinic"
