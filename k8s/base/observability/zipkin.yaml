@@ -1,0 +1,102 @@
+# Zipkin (PETPLAT-60) — docs/technical-spec.md#zipkin-tracing
+#
+# Deployed to the `tracing` namespace (not monitoring): the 5 instrumented
+# services send spans to http://zipkin.tracing:9411/api/v2/spans (env vars in
+# helm-values/{service}.yaml). In-memory storage: traces are lost on restart,
+# fine for dev/demo.
+#
+# UI: kubectl -n tracing port-forward svc/zipkin 9411:9411  ->  http://localhost:9411
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin
+  namespace: tracing
+  labels:
+    app.kubernetes.io/name: zipkin
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zipkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zipkin
+        app.kubernetes.io/part-of: petclinic
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: observability
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: zipkin
+          image: openzipkin/zipkin:3.6.1
+          env:
+            - name: STORAGE_TYPE
+              value: mem
+            # Cap in-memory spans so the heap stays inside the limit.
+            - name: MEM_MAX_SPANS
+              value: "50000"
+            - name: JAVA_OPTS
+              value: "-Xms64m -Xmx192m -XX:+ExitOnOutOfMemoryError"
+          ports:
+            - name: http
+              containerPort: 9411
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+  namespace: tracing
+  labels:
+    app.kubernetes.io/name: zipkin
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: observability
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: zipkin
+  ports:
+    - name: http
+      port: 9411
+      targetPort: http

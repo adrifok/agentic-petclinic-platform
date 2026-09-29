@@ -852,16 +852,15 @@ git push
 
 #### Scrape Targets
 
+Only the 5 services that include `micrometer-registry-prometheus` are scraped. config-server, discovery-server and admin-server don't have the dependency and return 404 on `/actuator/prometheus`.
+
 | Job Name | Target | Metrics Path | Port |
 |----------|--------|-------------|------|
-| `config-server` | `config-server.petclinic-{env}:8888` | `/actuator/prometheus` | 8888 |
-| `discovery-server` | `discovery-server.petclinic-{env}:8761` | `/actuator/prometheus` | 8761 |
 | `api-gateway` | `api-gateway.petclinic-{env}:8080` | `/actuator/prometheus` | 8080 |
 | `customers-service` | `customers-service.petclinic-{env}:8081` | `/actuator/prometheus` | 8081 |
 | `visits-service` | `visits-service.petclinic-{env}:8082` | `/actuator/prometheus` | 8082 |
 | `vets-service` | `vets-service.petclinic-{env}:8083` | `/actuator/prometheus` | 8083 |
 | `genai-service` | `genai-service.petclinic-{env}:8084` | `/actuator/prometheus` | 8084 |
-| `admin-server` | `admin-server.petclinic-{env}:9090` | `/actuator/prometheus` | 9090 |
 
 ### Grafana
 
@@ -877,8 +876,8 @@ git push
 
 | Dashboard | Key Metrics |
 |-----------|-------------|
-| Service Overview | All 8 services: up/down status, RPS, error rate |
-| Per-Service (x8) | Request rate, error rate, p95/p99 latency |
+| Service Overview | All 5 scraped services: up/down status, RPS, error rate |
+| Per-Service (x5) | Request rate, error rate, p95/p99 latency |
 | JVM Metrics | Heap usage, GC pauses, thread count |
 
 ### Alert Rules (Prometheus)
@@ -935,7 +934,7 @@ Loki receives logs from FluentBit and exposes them as a Grafana datasource. Log-
 | Namespace | `tracing` |
 | Port | 9411 |
 | Image | `openzipkin/zipkin` |
-| Services send traces via | OpenTelemetry exporter (configured in Spring Cloud Config) |
+| Services send traces via | Zipkin exporter (`spring-boot-starter-zipkin`), endpoint overridden per service with `MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT=http://zipkin.tracing:9411/api/v2/spans` (the config server's default points at `tracing-server:9411`) |
 
 ---
 

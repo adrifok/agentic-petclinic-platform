@@ -12,6 +12,17 @@ service:
 configMap:
   SPRING_PROFILES_ACTIVE: "docker,mysql,production"
   CONFIG_SERVER_URL: "http://config-server:8888"
+  # Tracing -> Zipkin in the tracing namespace (PETPLAT-60). Spring Boot 4
+  # only reads MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT; the
+  # MANAGEMENT_ZIPKIN_TRACING_ENDPOINT name was removed (deprecation level
+  # "error" since 3.2) and is kept only to match the E-11 spec wording. Env
+  # vars override the config-server value (http://tracing-server:9411).
+  MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT: "http://zipkin.tracing:9411/api/v2/spans"
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: "http://zipkin.tracing:9411/api/v2/spans"
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+  # Publish http_server_requests_seconds_bucket so the p95/p99 panels and the
+  # HighLatency alert have data (Boot doesn't emit histogram buckets by default).
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILESHISTOGRAM_HTTP_SERVER_REQUESTS: "true"
 
 datasource:
   enabled: true

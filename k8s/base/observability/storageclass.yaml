@@ -1,0 +1,21 @@
+# Encrypted gp3 StorageClass for the observability PVCs (Prometheus, Grafana,
+# Loki). The cluster's default `gp2` class uses the in-tree provisioner with no
+# `encrypted` parameter, and EBS encryption-by-default is off in the account,
+# so PVCs on gp2 would be unencrypted (Security Rule 4). Uses the EBS CSI
+# driver add-on managed by terraform/modules/eks.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-encrypted
+  labels:
+    app.kubernetes.io/name: gp3-encrypted
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+  fsType: ext4
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
