@@ -12,7 +12,7 @@ replicaCount: 0
 image:
   repository: genai-service
   tag: 440b9ad # updated by CI (update-image-tags.yml) to the 7-char commit SHA
-  pullPolicy: IfNotPresent
+
 service:
   port: 8084
 
