@@ -11,7 +11,7 @@ replicaCount: 0
 
 image:
   repository: genai-service
-  tag: fcd507d # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+  tag: 440b9ad # updated by CI (update-image-tags.yml) to the 7-char commit SHA
 
 service:
   port: 8084

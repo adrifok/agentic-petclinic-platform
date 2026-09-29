@@ -2,7 +2,7 @@
 # Discovery Server before starting.
 image:
   repository: customers-service
-  tag: fcd507d # updated by CI (update-image-tags.yml) to the 7-char commit SHA
+  tag: 440b9ad # updated by CI (update-image-tags.yml) to the 7-char commit SHA
 
 service:
   port: 8081
