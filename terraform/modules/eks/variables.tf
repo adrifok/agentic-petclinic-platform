@@ -191,6 +191,12 @@ variable "ebs_csi_addon_version" {
   default     = null
 }
 
+variable "metrics_server_addon_version" {
+  description = "Explicit metrics-server add-on version to pin. Null resolves to the most recent version compatible with cluster_version."
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Additional tags merged into every resource (Project/Environment/ManagedBy come from provider default_tags)."
   type        = map(string)

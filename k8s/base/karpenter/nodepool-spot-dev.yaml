@@ -1,0 +1,49 @@
+# Apply this file AFTER the Graviton free trial expires to enable Spot savings.
+#
+# PETPLAT-74 — dev spot override. Same NodePool name ("default") as
+# nodepool.yaml, so applying it replaces that NodePool's spec in place;
+# apply nodepool.yaml again to revert to on-demand. The EC2NodeClass is
+# unchanged and lives in nodepool.yaml.
+#
+# With both capacity types in one NodePool, Karpenter launches spot first
+# (price-capacity-optimized) and falls back to on-demand only when no spot
+# capacity is available, so no NodePool weight is needed. Spot interruptions
+# are handled through the SQS interruption queue from the Terraform
+# karpenter module.
+#
+# Apply: kubectl apply -f k8s/base/karpenter/nodepool-spot-dev.yaml
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: karpenter
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: petclinic
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t4g.small", "t4g.medium"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+  # Hard ceiling on everything this NodePool launches (unbounded cost without it).
+  limits:
+    cpu: "8"
+    memory: 32Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
