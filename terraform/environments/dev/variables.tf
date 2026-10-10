@@ -261,3 +261,27 @@ variable "github_app_branch" {
   type        = string
   default     = "main"
 }
+
+# --- Budget alerts (see docs/technical-spec.md#scaling-and-cost) ---
+
+variable "budget_limit_amount" {
+  description = "Monthly cost budget for dev in USD."
+  type        = string
+  default     = "100"
+}
+
+variable "budget_alert_thresholds" {
+  description = "Percentages of the monthly budget (actual spend) that trigger an email alert."
+  type        = list(number)
+  default     = [50, 80, 100]
+}
+
+variable "budget_alert_email" {
+  description = "Email address that receives dev budget alerts. Set in terraform.tfvars (gitignored)."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.budget_alert_email))
+    error_message = "budget_alert_email must be a valid email address."
+  }
+}

@@ -147,3 +147,18 @@ output "openai_secret_name" {
   description = "Prod Secrets Manager secret name for the OpenAI API key."
   value       = module.secrets.openai_secret_name
 }
+
+output "karpenter_role_arn" {
+  description = "prod Karpenter controller IRSA role ARN (kube-system/karpenter ServiceAccount annotation)."
+  value       = module.karpenter.karpenter_role_arn
+}
+
+output "karpenter_queue_name" {
+  description = "prod Karpenter SQS interruption queue name (Helm settings.interruptionQueue)."
+  value       = module.karpenter.karpenter_queue_name
+}
+
+output "karpenter_instance_profile_name" {
+  description = "prod instance profile for Karpenter-launched nodes (EC2NodeClass spec.instanceProfile)."
+  value       = module.karpenter.karpenter_instance_profile_name
+}

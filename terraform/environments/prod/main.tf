@@ -74,3 +74,48 @@ module "secrets" {
   openai_api_key              = var.openai_api_key
   secret_recovery_window_days = var.secret_recovery_window_days
 }
+
+# Implements PETPLAT-73 (Karpenter AWS prerequisites). Controller IRSA role,
+# node instance profile, SQS interruption queue and EventBridge rules — the
+# Helm release and NodePool/EC2NodeClass CRDs are installed separately. See
+# docs/technical-spec.md#karpenter-node-autoscaling.
+module "karpenter" {
+  source = "../../modules/karpenter"
+
+  project     = var.project
+  environment = var.environment
+
+  cluster_name      = module.eks.cluster_name
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider_url = module.eks.oidc_provider_url
+  node_role_arn     = module.eks.node_role_arn
+}
+
+# Implements PETPLAT-75 (budget alerts). Filtered on the Environment cost
+# allocation tag because dev and prod share one AWS account; the tag must be
+# activated in Billing or this budget reports $0. See
+# docs/technical-spec.md#scaling-and-cost.
+resource "aws_budgets_budget" "monthly" {
+  name         = "${var.project}-${var.environment}-monthly-budget"
+  budget_type  = "COST"
+  limit_amount = var.budget_limit_amount
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  cost_filter {
+    name   = "TagKeyValue"
+    values = [format("user:Environment$%s", var.environment)]
+  }
+
+  dynamic "notification" {
+    for_each = var.budget_alert_thresholds
+
+    content {
+      comparison_operator        = "GREATER_THAN"
+      threshold                  = notification.value
+      threshold_type             = "PERCENTAGE"
+      notification_type          = "ACTUAL"
+      subscriber_email_addresses = [var.budget_alert_email]
+    }
+  }
+}

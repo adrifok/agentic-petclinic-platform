@@ -17,3 +17,6 @@ domain_name = "example.com"
 # never hardcoded in any committed file. Get a key at
 # https://platform.openai.com/api-keys.
 openai_api_key = "REPLACE_ME"
+
+# Budget alert recipient (PETPLAT-75) — replace before running terraform apply.
+budget_alert_email = "you@example.com"
