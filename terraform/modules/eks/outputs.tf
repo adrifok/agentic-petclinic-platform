@@ -87,3 +87,8 @@ output "ebs_csi_addon_version" {
   description = "Installed aws-ebs-csi-driver add-on version."
   value       = aws_eks_addon.ebs_csi.addon_version
 }
+
+output "metrics_server_addon_version" {
+  description = "Installed metrics-server add-on version."
+  value       = aws_eks_addon.metrics_server.addon_version
+}

@@ -497,6 +497,12 @@ data "aws_eks_addon_version" "ebs_csi" {
   most_recent        = true
 }
 
+data "aws_eks_addon_version" "metrics_server" {
+  addon_name         = "metrics-server"
+  kubernetes_version = aws_eks_cluster.this.version
+  most_recent        = true
+}
+
 resource "aws_eks_addon" "coredns" {
   cluster_name                = aws_eks_cluster.this.name
   addon_name                  = "coredns"
@@ -559,6 +565,23 @@ resource "aws_eks_addon" "ebs_csi" {
   })
 
   # EBS CSI controller pods need schedulable nodes.
+  depends_on = [aws_eks_node_group.this]
+}
+
+# Metrics Server (PETPLAT-72) — EKS community add-on (upstream
+# kubernetes-sigs/metrics-server packaged by AWS). Required by HPA and
+# kubectl top.
+resource "aws_eks_addon" "metrics_server" {
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "metrics-server"
+  addon_version               = coalesce(var.metrics_server_addon_version, data.aws_eks_addon_version.metrics_server.version)
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-metrics-server"
+  })
+
   depends_on = [aws_eks_node_group.this]
 }
 

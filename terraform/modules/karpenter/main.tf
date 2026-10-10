@@ -7,7 +7,7 @@
 # Implements PETPLAT-73 (AWS resources). See
 # docs/technical-spec.md#karpenter-node-autoscaling and #irsa-roles.
 #
-# The controller policy follows the upstream Karpenter v1 reference policy
+# The controller policy follows the upstream Karpenter v1.14 reference policy
 # instead of the spec's shorthand (ec2:*, sqs:*): EC2 write actions are
 # scoped to resources tagged kubernetes.io/cluster/{cluster}=owned plus a
 # karpenter.sh/nodepool tag, SQS to this queue only, and iam:PassRole to the
@@ -342,9 +342,11 @@ data "aws_iam_policy_document" "controller" {
       "ec2:DescribeCapacityReservations",
       "ec2:DescribeImages",
       "ec2:DescribeInstances",
+      "ec2:DescribeInstanceStatus",
       "ec2:DescribeInstanceTypeOfferings",
       "ec2:DescribeInstanceTypes",
       "ec2:DescribeLaunchTemplates",
+      "ec2:DescribePlacementGroups",
       "ec2:DescribeSecurityGroups",
       "ec2:DescribeSpotPriceHistory",
       "ec2:DescribeSubnets",
@@ -400,6 +402,16 @@ data "aws_iam_policy_document" "controller" {
     effect    = "Allow"
     actions   = ["iam:GetInstanceProfile"]
     resources = [aws_iam_instance_profile.node.arn]
+  }
+
+  # The instance-profile garbage collector lists profiles on every reconcile,
+  # even when the EC2NodeClass uses a pre-created profile. Read-only; without
+  # it the controller logs AccessDenied in a retry loop.
+  statement {
+    sid       = "AllowInstanceProfileListAction"
+    effect    = "Allow"
+    actions   = ["iam:ListInstanceProfiles"]
+    resources = ["arn:${local.partition}:iam::${local.account_id}:instance-profile/*"]
   }
 
   statement {
