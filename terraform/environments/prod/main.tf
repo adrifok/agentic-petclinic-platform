@@ -91,9 +91,9 @@ module "karpenter" {
   node_role_arn     = module.eks.node_role_arn
 }
 
-# Implements PETPLAT-75 (budget alerts). Filtered on the Environment cost
-# allocation tag because dev and prod share one AWS account; the tag must be
-# activated in Billing or this budget reports $0. See
+# Implements PETPLAT-75 (budget alerts). No cost filter: dev and prod share
+# one AWS account, so this budget tracks the whole account total and the dev
+# and prod budgets alert on the same spend. See
 # docs/technical-spec.md#scaling-and-cost.
 resource "aws_budgets_budget" "monthly" {
   name         = "${var.project}-${var.environment}-monthly-budget"
@@ -101,11 +101,6 @@ resource "aws_budgets_budget" "monthly" {
   limit_amount = var.budget_limit_amount
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
-
-  cost_filter {
-    name   = "TagKeyValue"
-    values = [format("user:Environment$%s", var.environment)]
-  }
 
   dynamic "notification" {
     for_each = var.budget_alert_thresholds
