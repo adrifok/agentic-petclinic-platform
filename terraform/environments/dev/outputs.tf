@@ -197,3 +197,18 @@ output "github_actions_trusted_subject" {
   description = "Exact OIDC sub claim the GitHub Actions role trusts."
   value       = module.github_oidc.trusted_subject
 }
+
+output "karpenter_role_arn" {
+  description = "dev Karpenter controller IRSA role ARN (kube-system/karpenter ServiceAccount annotation)."
+  value       = module.karpenter.karpenter_role_arn
+}
+
+output "karpenter_queue_name" {
+  description = "dev Karpenter SQS interruption queue name (Helm settings.interruptionQueue)."
+  value       = module.karpenter.karpenter_queue_name
+}
+
+output "karpenter_instance_profile_name" {
+  description = "dev instance profile for Karpenter-launched nodes (EC2NodeClass spec.instanceProfile)."
+  value       = module.karpenter.karpenter_instance_profile_name
+}
