@@ -1,0 +1,12 @@
+2	mcp__terraform-mcp-server__delete_workspace_safely	{"workspace_name":"petclinic-prod"}
+2	mcp__terraform-mcp-server__delete_variable_set	{"variable_set_id":"varset-1"}
+2	mcp__terraform-mcp-server__create_run	{"workspace_name":"petclinic-prod","run_type":"destroy"}
+2	mcp__terraform-mcp-server__create_run	{"workspace_name":"petclinic-prod","is_destroy":true}
+2	mcp__awslabs_terraform__ExecuteTerraformCommand	{"command":"destroy","working_directory":"x"}
+ask	mcp__terraform-mcp-server__apply_run	{"run_id":"run-1"}
+0	mcp__terraform-mcp-server__create_run	{"workspace_name":"petclinic-prod","run_type":"plan_only"}
+0	mcp__terraform-mcp-server__search_policies	{"policy_query":"prevent destroy"}
+0	mcp__terraform-mcp-server__get_provider_details	{"provider_doc_id":"1"}
+0	mcp__awslabs_terraform__ExecuteTerraformCommand	{"command":"plan","working_directory":"x"}
+0	mcp__terraform-mcp-server__create_run	{"workspace_name":"petclinic-prod","is_destroy":false}
+0	mcp__terraform-mcp-server__create_run	{"workspace_name":"destroy-test","run_type":"plan_and_apply"}

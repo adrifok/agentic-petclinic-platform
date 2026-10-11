@@ -4,66 +4,84 @@
 # Why: Committing .env files, *.tfvars, credentials, or key files to git is a
 #      security incident. Once pushed, secrets are in git history forever
 #      (even after deletion). Prevention is much cheaper than rotation.
-# How: Checks if the command is a git add or git commit, then scans for
-#      secret-like filenames OR dangerous bulk-add patterns. Exits 2 to deny.
+# How: For each git segment (heredoc bodies and commit message text removed), blocks
+#      bulk staging (., *, :/, -A, --all), force-adding ignored files (-f),
+#      commit -a, and secret-like filenames. exit 2 = deny; reason on stderr.
 
 set -euo pipefail
 
+# shellcheck source=lib/segments.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/segments.sh"
+require_jq block-secret-commit.sh
+
 INPUT=$(cat)
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+COMMAND=$(jq -r '.tool_input.command // empty' <<<"$INPUT")
 
 if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-# Only check git add and git commit commands
-if echo "$COMMAND" | grep -qE 'git\s+(add|commit)'; then
-
-  # BLOCK 1: Catch bulk adds that could sweep in secret files
-  # 'git add .', 'git add -A', 'git add --all' stage everything including secrets
-  if echo "$COMMAND" | grep -qE 'git\s+add\s+(-A|--all|\.)'; then
-    echo "BLOCKED: 'git add .' / 'git add -A' can accidentally stage secret files."
+block() {
+  {
+    echo "BLOCKED: $1"
     echo ""
-    echo "Instead, add files explicitly by name:"
+    echo "Add files explicitly by name, e.g.:"
     echo "  git add terraform/modules/vpc/main.tf terraform/modules/vpc/variables.tf"
-    echo ""
-    echo "Or use 'git add -p' interactively in your terminal to review each change."
-    echo "This protects against accidentally committing .env, .tfvars, .pem, etc."
-    exit 2
+    echo "Secrets belong in AWS Secrets Manager; use *.example files with placeholders."
+    echo "If this is a false positive, run the git command directly in your terminal."
+  } >&2
+  exit 2
+}
+
+# git with optional global options (-C dir, -c k=v, --no-pager, ...)
+GIT='\bgit(\s+(-C|-c)\s+[^[:space:]]+|\s+--?[a-z-]+(=[^[:space:]]+)?)*'
+
+SECRET_FILE_PATTERNS=(
+  '\.env($|\s|/)'           # .env files (but not .envrc)
+  '\.env\.(local|dev|prod|production|development|staging|test)($|\s)'  # .env.<env>; .env.example stays allowed
+  '\.tfvars($|\s)'          # terraform.tfvars (actual secrets)
+  '\.tfstate'               # state holds plaintext secrets
+  '\.(out|tfplan)($|\s)'    # saved plans hold plaintext secrets
+  '\.pem($|\s)'             # PEM certificates/keys
+  '\.key($|\s)'             # Private key files
+  '\.p12($|\s)'             # PKCS12 keystores
+  '\.pfx($|\s)'             # PFX certificates
+  'kubeconfig'              # Kubernetes config with cluster creds
+  'aws-credentials'         # AWS credential files
+  'credentials\.json'       # Service account credentials
+  'credentials\.yaml'       # Credential files
+)
+
+while IFS= read -r seg; do
+  [ "$(first_word "$seg")" = "git" ] || continue
+
+  # Drop message arguments (-m/--message, quoted or bare; an unterminated quote
+  # means a multi-line message, so drop to end of line) before any check.
+  args=$(sed -E \
+    -e "s/\s(-m|--message)(\s+|=)('[^']*'|\"[^\"]*\"|[^[:space:]'\"]+)//g" \
+    -e "s/\s(-m|--message)(\s+|=)['\"].*$//" <<<"$seg")
+
+  if grep -qE "${GIT}\s+add\b" <<<"$args"; then
+    if grep -qE "${GIT}\s+add\b.*\s(\.|\./|\*|:/|-A|--all|-[a-zA-Z]*A[a-zA-Z]*)(\s|$)" <<<"$args"; then
+      block "Bulk 'git add' (., *, :/, -A, --all) can stage secret files."
+    fi
+    # Force-add bypasses .gitignore, which is the main secret guard
+    if grep -qE "${GIT}\s+add\b.*\s(-f|--force|-[a-zA-Z]*f[a-zA-Z]*)(\s|$)" <<<"$args"; then
+      block "'git add -f' bypasses .gitignore (which protects *.tfvars, .env, *.pem, plan files)."
+    fi
   fi
 
-  # BLOCK 2: Check for specific secret-like filenames in the command
-  # These patterns match actual secret FILES, not infrastructure code about secrets
-  # Use word-boundary matching to avoid false positives on terraform/modules/secrets/
-  SECRET_FILE_PATTERNS=(
-    '\.env($|\s|/)'           # .env files (but not .envrc)
-    '\.tfvars($|\s)'          # terraform.tfvars (actual secrets)
-    '\.pem($|\s)'             # PEM certificates/keys
-    '\.key($|\s)'             # Private key files
-    '\.p12($|\s)'             # PKCS12 keystores
-    '\.pfx($|\s)'             # PFX certificates
-    'kubeconfig'              # Kubernetes config with cluster creds
-    'aws-credentials'         # AWS credential files
-    'credentials\.json'       # Service account credentials
-    'credentials\.yaml'       # Credential files
-  )
+  if grep -qE "${GIT}\s+commit\b.*\s(--all|-[a-zA-Z]*a[a-zA-Z]*)(\s|$)" <<<"$args"; then
+    block "'git commit -a' stages all tracked changes without review."
+  fi
 
-  for pattern in "${SECRET_FILE_PATTERNS[@]}"; do
-    if echo "$COMMAND" | grep -qiE "$pattern"; then
-      echo "BLOCKED: Detected potential secret file in git command."
-      echo ""
-      echo "The command appears to stage or commit a file matching: ${pattern}"
-      echo ""
-      echo "Files that may contain secrets should NEVER be committed to git."
-      echo "Instead:"
-      echo "  - Add the file to .gitignore"
-      echo "  - Store secrets in AWS Secrets Manager"
-      echo "  - Use terraform.tfvars.example with placeholder values"
-      echo ""
-      echo "If this is a false positive, run the git command directly in your terminal."
-      exit 2
-    fi
-  done
-fi
+  if grep -qE "${GIT}\s+(add|commit)\b" <<<"$args"; then
+    for pattern in "${SECRET_FILE_PATTERNS[@]}"; do
+      if grep -qiE "$pattern" <<<"$args"; then
+        block "Detected a potential secret file in a git command (pattern: ${pattern})."
+      fi
+    done
+  fi
+done < <(segments "$COMMAND")
 
 exit 0
