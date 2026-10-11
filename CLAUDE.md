@@ -151,12 +151,14 @@ Five MCP servers configured at the project level:
 
 | Hook | Type | What it catches |
 |------|------|----------------|
-| `block-destroy.sh` | Block | `terraform destroy`, `terraform apply -destroy`, `kubectl delete` ns/deploy/svc/ingress/secret in prod |
-| `block-dangerous-rm.sh` | Block | `rm -rf` on terraform/, k8s/, helm/, helm-values/, .github/, .claude/ |
-| `warn-apply-without-plan.sh` | Warn | `terraform apply` without saved plan.out file |
+| `block-destroy.sh` | Block | terraform/terragrunt/tofu `destroy` (incl. `-chdir=`), `apply -destroy`, applying a `*destroy*.out` plan; any `kubectl delete` touching petclinic-prod or `-A`; `helm uninstall` in prod; `argocd app delete *-prod`; `aws ... delete-*` on petclinic-prod |
+| `block-dangerous-rm.sh` | Block | recursive `rm` on terraform/, k8s/, helm/, helm-values/, .github/, docs/, scripts/, .claude/ |
+| `warn-apply-without-plan.sh` | Ask | `terraform apply` without saved plan file (prompts via `permissionDecision: ask`) |
 | `suggest-validate.sh` | Info | Suggests validate/dry-run after editing .tf, K8s .yaml, Helm, or pipeline files |
-| `block-secret-commit.sh` | Block | `git add .`, committing .env, .tfvars, .pem, .key files |
-| `block-mcp-destroy.sh` | Block | `destroy` via MCP Terraform/Terragrunt tools |
+| `block-secret-commit.sh` | Block | bulk `git add` (`.`, `*`, `-A`, `:/`), `git add -f`, `git commit -a`, staging .env/.tfvars/.tfstate/plan files/.pem/.key |
+| `block-mcp-destroy.sh` | Block/Ask | terraform-mcp-server `delete_*` and destroy runs (block), `apply_run` (ask); awslabs `destroy` command |
+
+Hooks run via `$CLAUDE_PROJECT_DIR` paths and fail closed if `jq` is missing. Commands are split into segments by `.claude/hooks/lib/segments.sh`; heredoc bodies, commit messages and text-only commands (git/gh/echo/grep/cat) are not treated as commands, so docs and commit text mentioning `terraform destroy` are not blocked. `permissions.deny` in settings.json is a second layer. Regression tests: `bash .claude/hooks/tests/run-hook-tests.sh .claude/hooks .claude/hooks/tests/hook-cases.tsv .claude/hooks/tests/mcp-cases.tsv`. Known gap: string matching cannot detect a destroy plan saved under a neutral filename.
 
 ## Technical Specification
 

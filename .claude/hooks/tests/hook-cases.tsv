@@ -1,0 +1,110 @@
+2	block-destroy	terraform destroy
+2	block-destroy	terraform -chdir=terraform/environments/dev destroy
+2	block-destroy	cd terraform/environments/prod && terraform destroy -auto-approve
+2	block-destroy	TF_LOG=debug terraform -chdir=x destroy -target=module.rds
+2	block-destroy	terraform apply -destroy
+2	block-destroy	terraform -chdir=x apply -auto-approve -destroy
+2	block-destroy	terraform apply destroy.out
+2	block-destroy	terraform -chdir=terraform/environments/dev apply dev-destroy.tfplan
+2	block-destroy	terragrunt run-all destroy
+2	block-destroy	terragrunt destroy-all
+2	block-destroy	tofu destroy
+2	block-destroy	kubectl delete ns petclinic-prod
+2	block-destroy	kubectl delete namespace/petclinic-prod
+2	block-destroy	kubectl -n petclinic-prod delete deploy api-gateway
+2	block-destroy	kubectl delete all --all -n petclinic-prod
+2	block-destroy	kubectl --namespace=petclinic-prod delete pod x
+2	block-destroy	kubectl --context arn:aws:eks:eu-central-1:1:cluster/petclinic-prod-eks delete pvc --all -n monitoring
+2	block-destroy	kubectl delete pods --all -A
+2	block-destroy	kubectl delete -f k8s/argocd/applications/prod/
+2	block-destroy	helm uninstall petclinic -n petclinic-prod
+2	block-destroy	helm -n petclinic-prod uninstall api-gateway
+2	block-destroy	argocd app delete api-gateway-prod
+2	block-destroy	argocd app delete api-gateway-prod --cascade
+2	block-destroy	aws --region eu-central-1 eks delete-cluster --name petclinic-prod-eks
+2	block-destroy	aws rds delete-db-instance --db-instance-identifier petclinic-prod-mysql
+2	block-destroy	kubectl get pods -n petclinic-dev; kubectl -n petclinic-prod delete svc x
+0	block-destroy	terraform plan -destroy -out destroy.out
+0	block-destroy	terraform -chdir=terraform/environments/prod plan -out plan.out
+0	block-destroy	terraform apply plan.out
+0	block-destroy	terraform fmt -recursive && terraform validate
+0	block-destroy	kubectl get pods -n petclinic-prod
+0	block-destroy	kubectl delete pod x -n petclinic-dev
+0	block-destroy	kubectl delete ingress --all -n petclinic-dev
+0	block-destroy	helm template x helm/petclinic-service -f helm-values/prod.yaml
+0	block-destroy	argocd app sync api-gateway-prod
+0	block-destroy	argocd app delete api-gateway-dev
+0	block-destroy	aws ecr describe-images --repository-name petclinic-prod/api-gateway
+0	block-destroy	grep -rn destroy docs/
+0	block-destroy	git log --oneline
+2	block-secret-commit	git add .
+2	block-secret-commit	git add -A
+2	block-secret-commit	git add --all
+2	block-secret-commit	git add *
+2	block-secret-commit	git add -v .
+2	block-secret-commit	git -C /repo add .
+2	block-secret-commit	git add :/
+2	block-secret-commit	git add -f terraform/
+2	block-secret-commit	git add --force secrets.txt
+2	block-secret-commit	git commit -a -m "x"
+2	block-secret-commit	git commit -am "x"
+2	block-secret-commit	git add terraform/environments/dev/terraform.tfvars
+2	block-secret-commit	git add .env
+2	block-secret-commit	git add .env.prod
+2	block-secret-commit	git add terraform/environments/prod/plan.out
+2	block-secret-commit	git add terraform.tfstate
+2	block-secret-commit	git add certs/server.pem
+0	block-secret-commit	git add ./terraform/modules/vpc/main.tf
+0	block-secret-commit	git add terraform/modules/secrets/main.tf
+0	block-secret-commit	git add terraform/environments/prod/terraform.tfvars.example
+0	block-secret-commit	git add .env.example
+0	block-secret-commit	git commit -m "fix(hooks): block .env and .tfvars staging"
+0	block-secret-commit	git commit --amend --no-edit
+0	block-secret-commit	git status
+0	block-secret-commit	git add .claude/hooks/block-destroy.sh .claude/settings.json
+ask	warn-apply-without-plan	terraform apply
+ask	warn-apply-without-plan	terraform -chdir=x apply -auto-approve
+ask	warn-apply-without-plan	terraform plan -out plan.out && terraform apply
+0	warn-apply-without-plan	terraform apply plan.out
+0	warn-apply-without-plan	terraform -chdir=x apply plan.out
+0	warn-apply-without-plan	terraform plan -out plan.out
+2	block-dangerous-rm	rm -rf terraform/
+2	block-dangerous-rm	rm -rf ./.claude
+0	block-dangerous-rm	rm -f terraform/environments/prod/plan.out
+0	block-dangerous-rm	rm -rf /tmp/foo
+2	block-dangerous-rm	rm -f -r terraform
+2	block-dangerous-rm	rm -R k8s/
+2	block-dangerous-rm	rm --force --recursive helm
+2	block-dangerous-rm	rm -fr terraform/modules
+2	block-destroy	terragrunt --terragrunt-working-dir envs/prod destroy
+2	block-destroy	terragrunt run-all --terragrunt-non-interactive destroy
+2	block-destroy	terragrunt run-all apply -destroy
+2	block-destroy	terragrunt run --all -- destroy
+2	block-destroy	kubectl delete application api-gateway-prod -n argocd
+2	block-destroy	kubectl -n argocd delete applications.argoproj.io api-gateway-prod
+2	block-destroy	kubectl delete app/api-gateway-prod -n argocd
+2	block-destroy	argocd --grpc-web app delete api-gateway-prod
+2	block-destroy	kubectl delete ns --all
+2	block-destroy	kubectl delete namespaces -l env=prod
+2	block-destroy	kubectl delete deploy --all
+2	block-destroy	bash -c "terraform destroy"
+2	block-destroy	cat > x <<EOF\nhello\nEOF\nterraform destroy
+0	block-destroy	kubectl delete pod my-app-prod-x -n petclinic-dev
+0	block-destroy	kubectl delete application api-gateway-dev -n argocd
+0	block-destroy	git commit -m "docs: add terraform destroy runbook"
+0	block-destroy	gh pr create --title x --body "remember terraform destroy"
+0	block-destroy	grep -rn "terraform destroy" docs/
+0	block-destroy	cat > docs/runbook.md <<'EOF'\nterraform destroy\nkubectl delete ns petclinic-prod\nEOF
+0	block-destroy	git commit -F - <<'EOF'\nfix(hooks): PET-5 block terraform -chdir destroy\n\n- kubectl -n petclinic-prod delete is blocked\nEOF
+0	block-secret-commit	git commit -m "docs: explain git add . pitfalls"
+0	block-secret-commit	git commit -m "fix: handle -a flag"
+0	block-secret-commit	git commit -F msg.txt
+0	block-secret-commit	git commit -m "fix(hooks): x\n\n- replace git add -A with explicit paths\n- ignore .env"
+0	block-secret-commit	git commit -F - <<'EOF'\nfix: x\n\n- git add . is blocked\n- never commit terraform.tfvars\nEOF
+2	block-secret-commit	git add . && git commit -m "x"
+2	block-secret-commit	git add -A; git commit -m "safe"
+0	block-dangerous-rm	cat > n.md <<'EOF'\nrm -rf terraform/\nEOF
+2	block-dangerous-rm	rm -rf "terraform"
+2	block-dangerous-rm	echo ok && rm -rf k8s
+ask	warn-apply-without-plan	cd x && terraform apply -auto-approve
+0	warn-apply-without-plan	git commit -m "never terraform apply without plan"
