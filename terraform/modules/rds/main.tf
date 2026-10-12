@@ -10,7 +10,67 @@
 # auto-initializes the schema on first service startup.
 
 locals {
-  name_prefix = "${var.project}-${var.environment}"
+  name_prefix    = "${var.project}-${var.environment}"
+  error_log_name = "/aws/rds/instance/${local.name_prefix}-mysql/error"
+  kms_key_arn    = var.create_kms_key ? aws_kms_key.rds[0].arn : null
+}
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# ---------------------------------------------------------------------------
+# Customer-managed KMS key (PET-8) for RDS storage and the error log group.
+# Must exist at instance creation: changing kms_key_id later forces RDS
+# replacement.
+# ---------------------------------------------------------------------------
+
+data "aws_iam_policy_document" "rds_kms" {
+  count = var.create_kms_key ? 1 : 0
+
+  statement {
+    sid       = "AccountAdmin"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid       = "CloudWatchLogsErrorLogGroup"
+    actions   = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:Describe*"]
+    resources = ["*"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${data.aws_region.current.name}.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values   = ["arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${local.error_log_name}"]
+    }
+  }
+}
+
+resource "aws_kms_key" "rds" {
+  count = var.create_kms_key ? 1 : 0
+
+  description             = "${local.name_prefix} RDS storage and log encryption"
+  enable_key_rotation     = true
+  deletion_window_in_days = var.kms_deletion_window_days
+  policy                  = data.aws_iam_policy_document.rds_kms[0].json
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-rds-kms"
+  })
+}
+
+resource "aws_kms_alias" "rds" {
+  count = var.create_kms_key ? 1 : 0
+
+  name          = "alias/${local.name_prefix}-rds"
+  target_key_id = aws_kms_key.rds[0].key_id
 }
 
 # ---------------------------------------------------------------------------
@@ -77,6 +137,12 @@ resource "aws_db_parameter_group" "this" {
     apply_method = "pending-reboot"
   }
 
+  # Reject non-TLS connections (PET-8). Dynamic parameter, no reboot.
+  parameter {
+    name  = "require_secure_transport"
+    value = "1"
+  }
+
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-mysql8"
   })
@@ -95,8 +161,9 @@ resource "aws_db_parameter_group" "this" {
 # ---------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "rds_error" {
-  name              = "/aws/rds/instance/${local.name_prefix}-mysql/error"
+  name              = local.error_log_name
   retention_in_days = var.log_retention_days
+  kms_key_id        = local.kms_key_arn
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-rds-error-logs"
@@ -121,6 +188,7 @@ resource "aws_db_instance" "this" {
   max_allocated_storage = var.max_allocated_storage
   storage_type          = "gp2"
   storage_encrypted     = true
+  kms_key_id            = local.kms_key_arn
 
   db_name  = var.db_name
   username = var.master_username
@@ -131,6 +199,11 @@ resource "aws_db_instance" "this" {
   parameter_group_name   = aws_db_parameter_group.this.name
   vpc_security_group_ids = [var.security_group_id]
   publicly_accessible    = false
+  ca_cert_identifier     = "rds-ca-rsa2048-g1"
+
+  # Operator/bootstrap access only; apps keep password auth (Connector/J
+  # would need the AWS JDBC wrapper for IAM tokens).
+  iam_database_authentication_enabled = true
 
   multi_az                   = var.multi_az
   backup_retention_period    = var.backup_retention_period
@@ -148,4 +221,40 @@ resource "aws_db_instance" "this" {
   })
 
   depends_on = [aws_cloudwatch_log_group.rds_error]
+}
+
+# ---------------------------------------------------------------------------
+# Per-service DB credentials (PET-8). Terraform only generates and stores
+# them; the MySQL users and grants are created by the in-cluster bootstrap
+# job (PET-14), since RDS is not reachable from outside the VPC.
+# ---------------------------------------------------------------------------
+
+resource "random_password" "app" {
+  for_each = toset(var.app_db_users)
+
+  length           = 24
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "aws_secretsmanager_secret" "app" {
+  for_each = toset(var.app_db_users)
+
+  name                    = "${var.project}/${var.environment}/db-${each.key}"
+  description             = "MySQL credentials for ${each.key}-service on ${local.name_prefix}-mysql."
+  recovery_window_in_days = var.secret_recovery_window_days
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-db-${each.key}"
+  })
+}
+
+resource "aws_secretsmanager_secret_version" "app" {
+  for_each = toset(var.app_db_users)
+
+  secret_id = aws_secretsmanager_secret.app[each.key].id
+  secret_string = jsonencode({
+    username = each.key
+    password = random_password.app[each.key].result
+  })
 }
