@@ -43,6 +43,11 @@ networkPolicy:
   enabled: true
   vpcCidr: "10.1.0.0/16"
 
+# PET-10: read-only root filesystem + no SA token. Rollback switch: set
+# enabled: false and sync if a service fails with "Read-only file system".
+hardening:
+  enabled: true
+
 # Schema and seed data are loaded once by k8s/base/db-bootstrap (PET-8), so
 # per-service DB users only need DML. Env wins over the config-server value
 # (mode: ALWAYS) because the config repo sets override-none: true.

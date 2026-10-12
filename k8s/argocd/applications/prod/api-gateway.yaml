@@ -27,6 +27,15 @@ spec:
     server: https://kubernetes.default.svc
     namespace: petclinic-prod
   syncPolicy:
+    # Labels for a namespace ArgoCD creates (CreateNamespace alone sets none),
+    # so PSA restricted applies even if namespaces.yaml was not applied (PET-10).
+    managedNamespaceMetadata:
+      labels:
+        app.kubernetes.io/part-of: petclinic
+        environment: prod
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/audit: restricted
+        pod-security.kubernetes.io/warn: restricted
     syncOptions:
       - CreateNamespace=true
       - PruneLast=true

@@ -9,6 +9,11 @@ metadata:
     app.kubernetes.io/name: monitoring
     app.kubernetes.io/part-of: petclinic
     app.kubernetes.io/managed-by: Helm
+    # privileged: fluent-bit needs hostPath (/var/log), which baseline
+    # rejects. warn/audit still flag anything beyond baseline (PET-10).
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline
 ---
 apiVersion: v1
 kind: Namespace
@@ -18,3 +23,6 @@ metadata:
     app.kubernetes.io/name: tracing
     app.kubernetes.io/part-of: petclinic
     app.kubernetes.io/managed-by: Helm
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
