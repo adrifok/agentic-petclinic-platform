@@ -11,17 +11,19 @@ placeholder Slack webhook so it starts, and notifications just fail.
 
   2. Namespaces with PSA labels and the default deny, before anything else:
 
-       kubectl apply -f k8s/base/namespaces.yaml -f k8s/base/network-policies/default-deny-prod.yaml
+       kubectl apply -f k8s/base/namespaces.yaml -l environment=prod && kubectl apply -f k8s/base/network-policies/default-deny-prod.yaml
+
+     (-l environment=prod keeps petclinic-dev out of the prod cluster.)
 
   3. LB controller and ESO (ESO script also applies the ClusterSecretStore):
 
        ./scripts/install-lb-controller.sh prod && ./scripts/install-external-secrets.sh prod
 
-  4. Karpenter controller, then the prod NodePool/EC2NodeClass. The helm
-     command is the one in k8s/base/karpenter/karpenter-install.yaml, run
-     from terraform/environments/prod so terraform output returns prod values:
+  4. Karpenter controller (chart brings the CRDs), then the prod
+     NodePool/EC2NodeClass. replicas=1 because the t4g.small nodes are
+     memory-bound:
 
-       kubectl apply -f k8s/base/karpenter/nodepool-prod.yaml
+       cd terraform/environments/prod && helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter --version 1.14.1 --namespace kube-system --set settings.clusterName="$(terraform output -raw cluster_name)" --set settings.interruptionQueue="$(terraform output -raw karpenter_queue_name)" --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="$(terraform output -raw karpenter_role_arn)" --set replicas=1 --set controller.resources.requests.cpu=100m --set controller.resources.requests.memory=256Mi --set controller.resources.limits.memory=512Mi --wait && cd - && kubectl apply -f k8s/base/karpenter/nodepool-prod.yaml
 
   5. DB bootstrap: follow docs/runbooks/rds-database-init.md, "Prod: one-time
      bootstrap" (refill <RDS_ENDPOINT> in helm-values/prod.yaml and the
@@ -33,13 +35,22 @@ placeholder Slack webhook so it starts, and notifications just fail.
 
        aws secretsmanager create-secret --region eu-central-1 --name petclinic/prod/grafana-admin --secret-string "{\"username\":\"admin\",\"password\":\"$(openssl rand -base64 24)\"}"
 
+     (On a re-run the secrets already exist: create-secret fails, which is
+     fine; use put-secret-value only to change a value.) Read the Grafana
+     password back when needed:
+
+       aws secretsmanager get-secret-value --region eu-central-1 --secret-id petclinic/prod/grafana-admin --query SecretString --output text
+
        aws secretsmanager create-secret --region eu-central-1 --name petclinic/prod/alertmanager-slack --secret-string '{"webhook_url":"https://hooks.slack.com/services/disabled/disabled/disabled"}'
 
        kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.1/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
 
        kubectl kustomize k8s/base/observability | sed -e 's/petclinic-dev/petclinic-prod/g' -e 's|petclinic/dev/|petclinic/prod/|g' | kubectl apply -f -
 
-     The genai-service scrape target stays down (0 replicas); ignore it.
+     The genai-service scrape target stays down (0 replicas), so ServiceDown
+     fires for it. Silence it once Alertmanager is up:
+
+       kubectl -n monitoring exec deploy/alertmanager -- amtool silence add --alertmanager.url=http://localhost:9093 --duration=720h --comment="genai not run in prod" job=genai-service
 
   7. ArgoCD, port-forward only (no Ingress for it):
 
@@ -59,10 +70,11 @@ placeholder Slack webhook so it starts, and notifications just fail.
 
        kubectl apply -f k8s/argocd/projects/petclinic-prod.yaml && kubectl apply -n argocd -f k8s/argocd/applications/prod/
 
-  9. Prod Ingress and DNS alias: refill and apply ingress-prod.yaml (command
-     in its header), then set dns_create_alb_record = true, dns_alb_dns_name
-     and dns_alb_zone_id (Z215JYRZR1TBD5 for eu-central-1 ALBs) in the prod
-     terraform.tfvars, plan to plan.out and apply.
+  Moved to the start of PET-15 (no ALB sitting in front of nothing): prod
+  Ingress and DNS alias. Refill and apply ingress-prod.yaml (command in its
+  header), then set dns_create_alb_record = true, dns_alb_dns_name and
+  dns_alb_zone_id (Z215JYRZR1TBD5 for eu-central-1 ALBs) in the prod
+  terraform.tfvars, plan to plan.out and apply.
 
 Checks: kubectl get ns petclinic-prod --show-labels shows restricted;
 kubectl get clustersecretstore aws-secrets-manager is Ready; kubectl -n

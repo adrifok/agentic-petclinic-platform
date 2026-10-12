@@ -25,8 +25,8 @@ data:
     p, role:developer, applications, get, */*, allow
     p, role:developer, applications, sync, default/*-dev, allow
     p, role:developer, applications, action/*, default/*-dev, allow
-    p, role:developer, applications, sync, default/*-prod, deny
-    p, role:developer, applications, action/*, default/*-prod, deny
+    p, role:developer, applications, sync, petclinic-prod/*-prod, deny
+    p, role:developer, applications, action/*, petclinic-prod/*-prod, deny
     p, role:developer, projects, get, *, allow
     p, role:developer, clusters, get, *, allow
     p, role:developer, repositories, get, *, allow

@@ -2,6 +2,7 @@
 {{- $secretEnv := $override.secretEnv | default .Values.secretEnv }}
 {{- $rdsTls := and .Values.datasource.enabled (.Values.datasource.tls | default dict).enabled }}
 {{- $hardening := (.Values.hardening | default dict).enabled }}
+{{- $autoscaling := $override.autoscaling | default .Values.autoscaling }}
 {{- $securityContext := .Values.securityContext }}
 {{- if $hardening }}
 {{- $securityContext = merge (dict "readOnlyRootFilesystem" true) .Values.securityContext }}
@@ -13,8 +14,11 @@ metadata:
   labels:
     {{- include "petclinic-service.labels" . | nindent 4 }}
 spec:
-  {{- /* hasKey, not default: an explicit replicaCount: 0 must be kept. */}}
+  {{- /* Omitted when the HPA owns the count, so a sync does not reset it.
+         hasKey, not default: an explicit replicaCount: 0 must be kept. */}}
+  {{- if not $autoscaling.enabled }}
   replicas: {{ hasKey $override "replicaCount" | ternary $override.replicaCount .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "petclinic-service.selectorLabels" . | nindent 6 }}
