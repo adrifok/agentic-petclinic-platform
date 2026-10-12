@@ -13,7 +13,7 @@ metadata:
     app.kubernetes.io/managed-by: kubectl
     environment: prod
 spec:
-  project: default
+  project: petclinic-prod
   source:
     repoURL: https://github.com/adrifok/agentic-petclinic-platform.git
     targetRevision: main

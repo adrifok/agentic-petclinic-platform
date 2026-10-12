@@ -13,7 +13,8 @@ metadata:
   labels:
     {{- include "petclinic-service.labels" . | nindent 4 }}
 spec:
-  replicas: {{ $override.replicaCount | default .Values.replicaCount }}
+  {{- /* hasKey, not default: an explicit replicaCount: 0 must be kept. */}}
+  replicas: {{ hasKey $override "replicaCount" | ternary $override.replicaCount .Values.replicaCount }}
   selector:
     matchLabels:
       {{- include "petclinic-service.selectorLabels" . | nindent 6 }}
