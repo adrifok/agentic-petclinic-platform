@@ -550,12 +550,17 @@ resource "aws_eks_addon" "vpc_cni" {
   # Prefix delegation assigns /28 prefixes instead of single IPs per ENI slot,
   # lifting t4g.small from 11 pods/node to the kubelet cap. Only nodes launched
   # after this is set get the higher max-pods, hence the node group depends_on.
-  configuration_values = var.enable_prefix_delegation ? jsonencode({
-    env = {
-      ENABLE_PREFIX_DELEGATION = "true"
-      WARM_PREFIX_TARGET       = "1"
-    }
-  }) : null
+  # enableNetworkPolicy turns on the VPC CNI network policy agent, without it
+  # NetworkPolicy objects are accepted but not enforced (PET-9).
+  configuration_values = jsonencode(merge(
+    { enableNetworkPolicy = var.enable_network_policy ? "true" : "false" },
+    var.enable_prefix_delegation ? {
+      env = {
+        ENABLE_PREFIX_DELEGATION = "true"
+        WARM_PREFIX_TARGET       = "1"
+      }
+    } : {}
+  ))
 
   tags = merge(var.tags, {
     Name = "${local.name_prefix}-vpc-cni"

@@ -20,3 +20,10 @@ probes:
     path: /actuator/health
   liveness:
     path: /actuator/health
+
+# Who may call this service when networkPolicy.enabled (PET-9).
+networkPolicy:
+  ingress:
+    fromNamespace: true
+  # Internet 443 egress (config-server: GitHub config repo, genai: OpenAI).
+  egressInternet: true

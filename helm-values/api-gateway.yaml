@@ -42,3 +42,10 @@ initContainers:
 
 podAnnotations:
   prometheus.io/scrape: 'true'
+
+# Who may call this service when networkPolicy.enabled (PET-9).
+networkPolicy:
+  ingress:
+    fromPods: [admin-server]
+    fromVpc: true
+    fromMonitoring: true
