@@ -104,6 +104,22 @@ module "github_oidc" {
   ]
 }
 
+# PET-12: prod DNS in the hosted zone shared with dev (looked up, not
+# created). Adds only prod's own records: the cert validation CNAME for
+# petclinic.{domain} and, once the ALB exists, the alias record.
+module "dns" {
+  source = "../../modules/dns"
+
+  project     = var.project
+  environment = var.environment
+  domain_name = var.domain_name
+
+  create_hosted_zone = false
+  create_alb_record  = var.dns_create_alb_record
+  alb_dns_name       = var.dns_alb_dns_name
+  alb_zone_id        = var.dns_alb_zone_id
+}
+
 # Implements PETPLAT-33 (non-RDS secrets). RDS credentials are created by the
 # rds module (PETPLAT-23) — this module handles the OpenAI API key only. See
 # docs/technical-spec.md#secrets-management.

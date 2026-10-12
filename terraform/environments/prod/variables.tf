@@ -236,3 +236,26 @@ variable "github_platform_repo_id" {
   type        = string
   default     = "1355981888"
 }
+
+variable "domain_name" {
+  description = "Apex domain, same Route 53 zone as dev (PET-12). Prod record: petclinic.{domain_name}. Set in terraform.tfvars."
+  type        = string
+}
+
+variable "dns_create_alb_record" {
+  description = "Create the petclinic.{domain_name} alias to the prod ALB. False until the prod Ingress has created the ALB (PET-14)."
+  type        = bool
+  default     = false
+}
+
+variable "dns_alb_dns_name" {
+  description = "DNS name of the prod ALB (kubectl get ingress api-gateway -n petclinic-prod). Required when dns_create_alb_record is true."
+  type        = string
+  default     = ""
+}
+
+variable "dns_alb_zone_id" {
+  description = "Canonical hosted zone ID of the prod ALB (aws elbv2 describe-load-balancers). Required when dns_create_alb_record is true."
+  type        = string
+  default     = ""
+}

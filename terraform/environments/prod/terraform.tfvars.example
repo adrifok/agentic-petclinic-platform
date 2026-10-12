@@ -17,3 +17,8 @@ budget_alert_email = "you@example.com"
 # If your IP changes, kubectl/helm lose cluster access until this is updated and
 # re-applied (in-place endpoint update, ~2-5 min). The placeholder fails validation on purpose.
 eks_cluster_endpoint_public_access_cidrs = ["REPLACE_ME/32"]
+
+# Apex domain, same Route 53 hosted zone as dev (PET-12). Prod host is
+# petclinic.<domain_name>. dns_create_alb_record stays false until the prod
+# Ingress has created the ALB, then set it with dns_alb_dns_name/dns_alb_zone_id.
+domain_name = "example.com"

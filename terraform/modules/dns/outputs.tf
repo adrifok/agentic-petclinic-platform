@@ -12,7 +12,7 @@ output "name_servers" {
 }
 
 output "certificate_arn" {
-  description = "Validated ACM certificate ARN (wildcard *.{domain_name}) — pass to the Ingress's alb.ingress.kubernetes.io/certificate-arn annotation."
+  description = "Validated ACM certificate ARN (dev: *.{domain_name}, prod: petclinic.{domain_name}) — pass to the Ingress's alb.ingress.kubernetes.io/certificate-arn annotation."
   value       = aws_acm_certificate_validation.this.certificate_arn
 }
 
