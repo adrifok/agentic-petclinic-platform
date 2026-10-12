@@ -143,6 +143,7 @@ spec:
         {{- end }}
         {{- if $hardening }}
         - name: tmp
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 256Mi
         {{- end }}
       {{- end }}

@@ -30,7 +30,8 @@ First prod sync checks (dev was not used to validate)
   genai chat answers (writes its vector store temp file to /tmp)
   ExternalSecrets synced: kubectl -n petclinic-prod get externalsecret
   Scope check: an ExternalSecret created in another namespace (for example
-  default) must show a SecretStore not allowed / condition error, not a Secret
+  default) must stay not Ready and create no Secret (kubectl describe shows
+  the store rejecting the namespace; exact wording depends on the ESO version)
 
 Rollback if a service breaks on the read-only filesystem: set
 hardening.enabled: false in helm-values/prod.yaml, commit, and sync that app.
