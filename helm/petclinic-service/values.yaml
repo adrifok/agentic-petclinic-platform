@@ -60,6 +60,10 @@ configMap: {}
 datasource:
   enabled: false
   url: ""
+  # Builds /certs/rds-truststore.p12 from files/rds-ca-eu-central-1.crt
+  # (PET-8). The URL must then reference it, see helm-values/prod.yaml.
+  tls:
+    enabled: false
 
 # Secret-backed env vars. Names/keys must match the ExternalSecret targets
 # in k8s/base/external-secrets/. Set per service.

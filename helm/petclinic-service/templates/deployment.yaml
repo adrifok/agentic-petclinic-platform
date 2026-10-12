@@ -1,4 +1,6 @@
 {{- $override := index (.Values.perService | default dict) .Release.Name | default dict }}
+{{- $secretEnv := $override.secretEnv | default .Values.secretEnv }}
+{{- $rdsTls := and .Values.datasource.enabled (.Values.datasource.tls | default dict).enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +24,7 @@ spec:
       serviceAccountName: {{ include "petclinic-service.fullname" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.initContainers }}
+      {{- if or .Values.initContainers $rdsTls }}
       initContainers:
         {{- range .Values.initContainers }}
         - name: {{ .name }}
@@ -31,6 +33,32 @@ spec:
           command: ['sh', '-c', 'until wget -qO- {{ .url }}; do sleep 5; done']
           securityContext:
             {{- toYaml $.Values.securityContext | nindent 12 }}
+        {{- end }}
+        {{- if $rdsTls }}
+        # keytool imports one cert per call, so split the PEM bundle first.
+        - name: build-rds-truststore
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - >-
+              cd /certs &&
+              awk '/BEGIN CERT/{n++} {print > ("ca-" n ".pem")}' /rds-ca/ca.pem &&
+              for f in ca-*.pem; do
+              keytool -importcert -noprompt -alias "${f%.pem}" -file "$f"
+              -keystore rds-truststore.p12 -storetype PKCS12 -storepass changeit || exit 1;
+              done && rm -f ca-*.pem
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: rds-ca
+              mountPath: /rds-ca
+              readOnly: true
+            - name: rds-truststore
+              mountPath: /certs
         {{- end }}
       {{- end }}
       containers:
@@ -43,9 +71,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "petclinic-service.fullname" . }}-config
-          {{- if or .Values.secretEnv .Values.env }}
+          {{- if or $secretEnv .Values.env }}
           env:
-            {{- range .Values.secretEnv }}
+            {{- range $secretEnv }}
             - name: {{ .name }}
               valueFrom:
                 secretKeyRef:
@@ -82,3 +110,17 @@ spec:
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if $rdsTls }}
+          volumeMounts:
+            - name: rds-truststore
+              mountPath: /certs
+              readOnly: true
+          {{- end }}
+      {{- if $rdsTls }}
+      volumes:
+        - name: rds-ca
+          configMap:
+            name: {{ include "petclinic-service.fullname" . }}-rds-ca
+        - name: rds-truststore
+          emptyDir: {}
+      {{- end }}

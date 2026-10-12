@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-bootstrap
+  namespace: petclinic-db-bootstrap
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mysql
+          image: mysql:8.0.40@sha256:d58ac93387f644e4e040c636b8f50494e78e5afc27ca0a87348b2f577da2b7ff
+          envFrom:
+            - secretRef:
+                name: db-bootstrap-credentials
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-bootstrap-config
+                  key: DB_HOST
+          command:
+            - bash
+            - -ceu
+            # ALTER USER after CREATE keeps passwords in sync if a secret was rotated.
+            - |
+              case "$DB_HOST" in *RDS_ENDPOINT*) echo "DB_HOST placeholder not refilled" >&2; exit 1;; esac
+              export MYSQL_PWD="$MASTER_PASSWORD"
+              db() { mysql --host="$DB_HOST" --user="$MASTER_USER" --ssl-mode=VERIFY_IDENTITY --ssl-ca=/config/rds-ca.pem "$@"; }
+              for f in /sql/*.sql; do echo "applying $f"; db < "$f"; done
+              db petclinic <<SQL
+              CREATE USER IF NOT EXISTS 'customers'@'%' IDENTIFIED BY '${CUSTOMERS_PASSWORD}' REQUIRE SSL;
+              ALTER USER 'customers'@'%' IDENTIFIED BY '${CUSTOMERS_PASSWORD}' REQUIRE SSL;
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.types TO 'customers'@'%';
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.owners TO 'customers'@'%';
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.pets TO 'customers'@'%';
+              CREATE USER IF NOT EXISTS 'vets'@'%' IDENTIFIED BY '${VETS_PASSWORD}' REQUIRE SSL;
+              ALTER USER 'vets'@'%' IDENTIFIED BY '${VETS_PASSWORD}' REQUIRE SSL;
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.vets TO 'vets'@'%';
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.specialties TO 'vets'@'%';
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.vet_specialties TO 'vets'@'%';
+              CREATE USER IF NOT EXISTS 'visits'@'%' IDENTIFIED BY '${VISITS_PASSWORD}' REQUIRE SSL;
+              ALTER USER 'visits'@'%' IDENTIFIED BY '${VISITS_PASSWORD}' REQUIRE SSL;
+              GRANT SELECT, INSERT, UPDATE, DELETE ON petclinic.visits TO 'visits'@'%';
+              SQL
+              echo "bootstrap done"
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - { name: sql, mountPath: /sql, readOnly: true }
+            - { name: config, mountPath: /config, readOnly: true }
+      volumes:
+        - name: sql
+          configMap:
+            name: db-bootstrap-sql
+        - name: config
+          configMap:
+            name: db-bootstrap-config

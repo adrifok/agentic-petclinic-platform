@@ -86,3 +86,62 @@ retrieve it for this manual check with:
     --secret-id petclinic/dev/rds-credentials \
     --region eu-central-1 \
     --query SecretString --output text
+
+Prod: one-time bootstrap and per-service users (PET-8)
+
+Prod does not use Spring auto-init. helm-values/prod.yaml sets
+SPRING_SQL_INIT_MODE=never, and each DB service connects as its own user
+(customers, visits, vets) with SELECT/INSERT/UPDATE/DELETE on its own tables
+only. The master user never reaches petclinic-prod.
+
+What enforces what
+
+  RDS parameter group   require_secure_transport=1, non-TLS connections rejected
+  MySQL users           REQUIRE SSL, DML-only grants per table
+  App JDBC URL          sslMode=VERIFY_IDENTITY against the RDS CA truststore
+                        built by the chart's build-rds-truststore init container
+  Secrets               petclinic/prod/db-<svc> (rds module), synced by
+                        k8s/base/external-secrets/db-credentials-prod.yaml
+
+Run once, after terraform apply and ESO install, before the first ArgoCD sync
+of customers/visits/vets (PET-14):
+
+  1. Refill the endpoint placeholder in the bootstrap job and in helm-values/prod.yaml
+     (the chart refuses to render customers/visits/vets while it is still there),
+     then commit prod.yaml so ArgoCD picks it up:
+
+       sed -i "s|<RDS_ENDPOINT>|$(terraform -chdir=terraform/environments/prod output -raw rds_endpoint)|" k8s/base/db-bootstrap/kustomization.yaml helm-values/prod.yaml
+
+  2. Apply and wait for the job:
+
+       kubectl apply -k k8s/base/db-bootstrap && kubectl -n petclinic-db-bootstrap wait --for=condition=complete job/db-bootstrap --timeout=300s && kubectl -n petclinic-db-bootstrap logs job/db-bootstrap
+
+     The job is idempotent (CREATE TABLE IF NOT EXISTS, INSERT IGNORE,
+     CREATE USER IF NOT EXISTS + ALTER USER). Rerun it after rotating a
+     db-<svc> secret.
+
+  3. Remove the master credentials from the cluster:
+
+       kubectl delete namespace petclinic-db-bootstrap
+
+  4. Apply the app ExternalSecrets, then sync customers, vets, visits in that order:
+
+       kubectl apply -f k8s/base/external-secrets/db-credentials-prod.yaml
+
+Runtime checks (PET-14), from a debug pod:
+
+  A connection with --ssl-mode=DISABLED must fail.
+  SHOW GRANTS FOR 'visits'@'%'; lists only petclinic.visits.
+  The app pods reach Ready with the db-<svc> users.
+
+Schema changes: the SQL in k8s/base/db-bootstrap/sql/ is copied from the app
+repo at commit 440b9ad. If the app's schema.sql changes, copy it again and
+rerun the job.
+
+Final snapshot: prod storage and the final snapshot are encrypted with the
+RDS customer-managed key. After a terraform destroy that key is scheduled for
+deletion (kms_deletion_window_days, 30 in prod). Once the window passes the
+snapshot cannot be restored, so cancel the key deletion first if the snapshot
+is needed:
+
+  aws kms cancel-key-deletion --region eu-central-1 --key-id "$(aws kms describe-key --region eu-central-1 --key-id alias/petclinic-prod-rds --query KeyMetadata.KeyId --output text)"
