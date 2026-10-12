@@ -201,3 +201,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_network_policy" {
+  description = "Enforce Kubernetes NetworkPolicies through the VPC CNI network policy agent (PET-9). Changing it on a running cluster rolls the aws-node pods."
+  type        = bool
+  default     = true
+}

@@ -15,3 +15,8 @@ configMap:
 initContainers:
   - name: wait-for-config-server
     url: http://config-server:8888/actuator/health
+
+# Who may call this service when networkPolicy.enabled (PET-9).
+networkPolicy:
+  ingress:
+    fromNamespace: true

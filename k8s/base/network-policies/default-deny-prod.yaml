@@ -1,0 +1,17 @@
+# Namespace-wide default deny (PET-9). Each chart release adds its own
+# allow-list NetworkPolicy; any pod without one gets no traffic at all.
+# Apply with namespaces.yaml, before the first ArgoCD prod sync.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: petclinic-prod
+  labels:
+    app.kubernetes.io/name: default-deny
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

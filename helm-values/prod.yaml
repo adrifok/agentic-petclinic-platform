@@ -37,6 +37,12 @@ datasource:
   tls:
     enabled: true
 
+# NetworkPolicies (PET-9). Kill switch: set enabled: false and sync if a
+# missing allow rule breaks traffic. vpcCidr = terraform prod var vpc_cidr.
+networkPolicy:
+  enabled: true
+  vpcCidr: "10.1.0.0/16"
+
 # Schema and seed data are loaded once by k8s/base/db-bootstrap (PET-8), so
 # per-service DB users only need DML. Env wins over the config-server value
 # (mode: ALWAYS) because the config repo sets override-none: true.

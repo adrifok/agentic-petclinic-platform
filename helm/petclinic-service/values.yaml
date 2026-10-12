@@ -116,3 +116,15 @@ podDisruptionBudget:
 # populated by helm-values/prod.yaml. Empty/absent for dev, so dev falls
 # through to the chart defaults above. See helm-values/prod.yaml.
 perService: {}
+
+# NetworkPolicy allow-list (PET-9). Off by default; prod.yaml turns it on.
+# ingress is set per service in helm-values/{service}.yaml.
+networkPolicy:
+  enabled: false
+  vpcCidr: ""
+  ingress:
+    fromNamespace: false
+    fromPods: []
+    fromVpc: false
+    fromMonitoring: false
+  egressInternet: false
