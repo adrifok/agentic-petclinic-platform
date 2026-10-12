@@ -24,7 +24,7 @@
 # After this script, apply the ExternalSecret CRs for your services:
 #   dev:  kubectl apply -f k8s/base/external-secrets/rds-credentials.yaml
 #         kubectl apply -f k8s/base/external-secrets/openai-api-key.yaml
-#   prod: kubectl apply -f k8s/base/external-secrets/rds-credentials-prod.yaml
+#   prod: kubectl apply -f k8s/base/external-secrets/db-credentials-prod.yaml
 #         kubectl apply -f k8s/base/external-secrets/openai-api-key-prod.yaml
 #
 # See docs/technical-spec.md#secrets-management and #irsa-roles.
@@ -161,7 +161,7 @@ if [[ "${ENV}" == "dev" ]]; then
   echo "    kubectl apply -f k8s/base/external-secrets/rds-credentials.yaml"
   echo "    kubectl apply -f k8s/base/external-secrets/openai-api-key.yaml"
 else
-  echo "    kubectl apply -f k8s/base/external-secrets/rds-credentials-prod.yaml"
+  echo "    kubectl apply -f k8s/base/external-secrets/db-credentials-prod.yaml"
   echo "    kubectl apply -f k8s/base/external-secrets/openai-api-key-prod.yaml"
 fi
 echo "============================================"

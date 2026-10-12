@@ -27,8 +27,21 @@ image:
 # runtime. Refill once prod RDS exists:
 #   sed -i "s|<RDS_ENDPOINT>|$(terraform -chdir=terraform/environments/prod output -raw rds_endpoint)|" \
 #     helm-values/prod.yaml
+#
+# TLS (PET-8): RDS has require_secure_transport=1. VERIFY_IDENTITY checks the
+# cert chain and hostname against the truststore built by the chart's
+# build-rds-truststore init container. "changeit" only guards public CA certs,
+# not a secret.
 datasource:
-  url: "jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic"
+  url: "jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic?sslMode=VERIFY_IDENTITY&trustCertificateKeyStoreUrl=file:/certs/rds-truststore.p12&trustCertificateKeyStoreType=PKCS12&trustCertificateKeyStorePassword=changeit"
+  tls:
+    enabled: true
+
+# Schema and seed data are loaded once by k8s/base/db-bootstrap (PET-8), so
+# per-service DB users only need DML. Env wins over the config-server value
+# (mode: ALWAYS) because the config repo sets override-none: true.
+configMap:
+  SPRING_SQL_INIT_MODE: "never"
 
 perService:
   config-server:
@@ -55,6 +68,13 @@ perService:
       minAvailable: 1
 
   customers-service:
+    secretEnv:
+      - name: SPRING_DATASOURCE_USERNAME
+        secretName: db-customers
+        secretKey: username
+      - name: SPRING_DATASOURCE_PASSWORD
+        secretName: db-customers
+        secretKey: password
     replicaCount: 2
     autoscaling:
       enabled: true
@@ -66,6 +86,13 @@ perService:
       minAvailable: 1
 
   visits-service:
+    secretEnv:
+      - name: SPRING_DATASOURCE_USERNAME
+        secretName: db-visits
+        secretKey: username
+      - name: SPRING_DATASOURCE_PASSWORD
+        secretName: db-visits
+        secretKey: password
     replicaCount: 2
     autoscaling:
       enabled: true
@@ -77,6 +104,13 @@ perService:
       minAvailable: 1
 
   vets-service:
+    secretEnv:
+      - name: SPRING_DATASOURCE_USERNAME
+        secretName: db-vets
+        secretKey: username
+      - name: SPRING_DATASOURCE_PASSWORD
+        secretName: db-vets
+        secretKey: password
     replicaCount: 2
     autoscaling:
       enabled: true

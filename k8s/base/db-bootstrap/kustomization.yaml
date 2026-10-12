@@ -1,0 +1,33 @@
+# One-time prod DB bootstrap (PET-8, run during PET-14). Loads schema + seed
+# data as the master user, then creates per-service users with DML-only grants.
+# Idempotent. Delete the whole namespace when done so the master credentials
+# leave the cluster. See docs/runbooks/rds-database-init.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: petclinic-db-bootstrap
+labels:
+  - pairs:
+      app.kubernetes.io/name: db-bootstrap
+      app.kubernetes.io/part-of: petclinic
+      app.kubernetes.io/managed-by: Helm
+    includeSelectors: false
+resources:
+  - namespace.yaml
+  - externalsecret.yaml
+  - job.yaml
+configMapGenerator:
+  - name: db-bootstrap-sql
+    files:
+      - sql/01-customers-schema.sql
+      - sql/02-customers-data.sql
+      - sql/03-vets-schema.sql
+      - sql/04-vets-data.sql
+      - sql/05-visits-schema.sql
+      - sql/06-visits-data.sql
+  - name: db-bootstrap-config
+    files:
+      - rds-ca.pem=rds-ca.crt
+    literals:
+      # Refill before applying:
+      #   sed -i "s|<RDS_ENDPOINT>|$(terraform -chdir=terraform/environments/prod output -raw rds_endpoint)|" k8s/base/db-bootstrap/kustomization.yaml
+      - DB_HOST=<RDS_ENDPOINT>
