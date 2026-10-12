@@ -66,6 +66,44 @@ module "rds" {
   app_db_users             = ["customers", "visits", "vets"]
 }
 
+# PET-7: prod ECR, IMMUTABLE tags. Images are not built for prod; they are
+# promoted from dev ECR by .github/workflows/promote-images.yml.
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project     = var.project
+  environment = var.environment
+
+  service_names        = var.ecr_service_names
+  image_tag_mutability = "IMMUTABLE"
+  # Larger than dev's 10 so a still-running or rollback SHA isn't expired.
+  max_image_count = 30
+}
+
+data "aws_caller_identity" "current" {}
+
+# PET-7: separate prod CI role, owner of the account-global GitHub OIDC
+# provider. Trusts only the platform repo's main branch (promotion
+# workflow), reads dev repos, pushes to prod repos.
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  project     = var.project
+  environment = var.environment
+
+  create_oidc_provider = true
+  github_owner         = var.github_owner
+  github_owner_id      = var.github_owner_id
+  github_repo          = var.github_platform_repo
+  github_repo_id       = var.github_platform_repo_id
+  github_branch        = "main"
+  ecr_repository_arns  = values(module.ecr.repository_arns)
+  ecr_pull_repository_arns = [
+    for s in var.ecr_service_names :
+    "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project}-dev/${s}"
+  ]
+}
+
 # Implements PETPLAT-33 (non-RDS secrets). RDS credentials are created by the
 # rds module (PETPLAT-23) — this module handles the OpenAI API key only. See
 # docs/technical-spec.md#secrets-management.

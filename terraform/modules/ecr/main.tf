@@ -25,6 +25,13 @@ resource "aws_ecr_repository" "this" {
   tags = merge(var.tags, {
     Name = "${var.project}-${var.environment}-${each.value}"
   })
+
+  lifecycle {
+    precondition {
+      condition     = var.environment != "prod" || var.image_tag_mutability == "IMMUTABLE"
+      error_message = "Prod ECR repositories must use IMMUTABLE tags (PET-7)."
+    }
+  }
 }
 
 # Two independent rules — AWS evaluates each tagStatus family on its own, so

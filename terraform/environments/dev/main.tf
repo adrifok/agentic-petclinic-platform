@@ -110,24 +110,29 @@ module "secrets" {
   secret_recovery_window_days = var.secret_recovery_window_days
 }
 
-# Implements PETPLAT-52 (OIDC federation for GitHub Actions). Dev owns the
-# account-global GitHub OIDC provider; prod must call this module with
-# create_oidc_provider = false and existing_oidc_provider_arn. The role
+# Implements PETPLAT-52 (OIDC federation for GitHub Actions). Prod owns the
+# account-global GitHub OIDC provider (PET-7), since dev is torn down
+# regularly; dev looks it up, so prod must be applied first. The role
 # trusts only the app repo fork's main branch — see
 # docs/technical-spec.md#cicd-pipeline.
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
 module "github_oidc" {
   source = "../../modules/github-oidc"
 
   project     = var.project
   environment = var.environment
 
-  create_oidc_provider = true
-  github_owner         = var.github_owner
-  github_repo          = var.github_app_repo
-  github_owner_id      = var.github_owner_id
-  github_repo_id       = var.github_app_repo_id
-  github_branch        = var.github_app_branch
-  ecr_repository_arns  = values(module.ecr.repository_arns)
+  create_oidc_provider       = false
+  existing_oidc_provider_arn = data.aws_iam_openid_connect_provider.github.arn
+  github_owner               = var.github_owner
+  github_repo                = var.github_app_repo
+  github_owner_id            = var.github_owner_id
+  github_repo_id             = var.github_app_repo_id
+  github_branch              = var.github_app_branch
+  ecr_repository_arns        = values(module.ecr.repository_arns)
 }
 
 # Implements PETPLAT-73 (Karpenter AWS prerequisites). Controller IRSA role,
