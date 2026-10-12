@@ -11,3 +11,9 @@ openai_api_key = "REPLACE_ME"
 
 # Budget alert recipient (PETPLAT-75) — replace before running terraform apply.
 budget_alert_email = "you@example.com"
+
+# Operator IPs allowed to reach the prod EKS public API endpoint (PET-6).
+# Required; each entry must be /24 or narrower. Get yours with: curl -s https://checkip.amazonaws.com
+# If your IP changes, kubectl/helm lose cluster access until this is updated and
+# re-applied (in-place endpoint update, ~2-5 min). The placeholder fails validation on purpose.
+eks_cluster_endpoint_public_access_cidrs = ["REPLACE_ME/32"]
