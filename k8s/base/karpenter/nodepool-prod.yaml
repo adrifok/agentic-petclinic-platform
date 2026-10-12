@@ -1,0 +1,86 @@
+# Karpenter NodePool + EC2NodeClass — prod (PET-14), copy of nodepool.yaml.
+#
+# On-demand only: the Graviton free trial is active, so spot gives no saving.
+# Same NodePool/EC2NodeClass names as dev: each cluster has its own.
+#
+# Requires: the Karpenter chart (CRDs) — see karpenter-install.yaml — and the
+# Terraform karpenter module + karpenter.sh/discovery tags on the dev subnets
+# and node security group (prod: petclinic-prod).
+#
+# Apply: kubectl apply -f k8s/base/karpenter/nodepool-prod.yaml
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: karpenter
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: petclinic
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t4g.small", "t4g.medium"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+  # Hard ceiling on everything this NodePool launches. Without it Karpenter
+  # has no upper bound on node count (unbounded cost).
+  limits:
+    cpu: "8"
+    memory: 32Gi
+  disruption:
+    # karpenter.sh/v1 name for the v1beta1 "WhenUnderutilized" policy.
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: karpenter
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+spec:
+  amiSelectorTerms:
+    # @latest rolls nodes onto each new AL2023 AMI (drift). Pin a version
+    # (e.g. al2023@v20261001) for prod.
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: petclinic-prod
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: petclinic-prod
+  # Created by terraform/modules/karpenter. Must match exactly, or nodes
+  # launch but cannot join the cluster.
+  instanceProfile: petclinic-prod-karpenter-node-profile
+  # Public subnets (ADR-0001) have map_public_ip_on_launch, so nodes get a
+  # public IP for image pulls without a NAT gateway.
+  metadataOptions:
+    httpEndpoint: enabled
+    httpTokens: required
+    httpPutResponseHopLimit: 1
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 20Gi
+        volumeType: gp3
+        encrypted: true
+  tags:
+    Project: petclinic
+    Environment: prod
+    ManagedBy: karpenter

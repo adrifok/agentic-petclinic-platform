@@ -1,0 +1,44 @@
+# ArgoCD AppProject: petclinic-prod (PET-14, audit LOW-7)
+#
+# The prod Applications use this project instead of "default": they may only
+# pull from this repo, only deploy into petclinic-prod on this cluster, and
+# only create the kinds the petclinic-service chart renders.
+#
+# Apply after ArgoCD is installed, before the prod Applications:
+#   kubectl apply -f k8s/argocd/projects/petclinic-prod.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: petclinic-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: petclinic-prod
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: kubectl
+    environment: prod
+spec:
+  description: Petclinic prod services (manual sync)
+  sourceRepos:
+    - https://github.com/adrifok/agentic-petclinic-platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: petclinic-prod
+  # Namespace only, for CreateNamespace=true + managedNamespaceMetadata.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: networking.k8s.io
+      kind: NetworkPolicy
