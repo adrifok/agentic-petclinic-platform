@@ -17,5 +17,8 @@ metadata:
     app.kubernetes.io/part-of: petclinic
     app.kubernetes.io/managed-by: Helm
     environment: prod
-    pod-security.kubernetes.io/enforce: baseline
+    # PET-10: restricted enforced. ArgoCD sets the same labels through
+    # managedNamespaceMetadata in k8s/argocd/applications/prod/.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted

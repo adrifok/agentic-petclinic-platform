@@ -102,6 +102,11 @@ securityContext:
     drop: ["ALL"]
   readOnlyRootFilesystem: false
 
+# PET-10 (prod only): read-only root filesystem with an emptyDir /tmp, and no
+# ServiceAccount token mounted.
+hardening:
+  enabled: false
+
 autoscaling:
   enabled: false
   minReplicas: 1

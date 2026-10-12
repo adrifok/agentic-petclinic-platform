@@ -1,6 +1,11 @@
 {{- $override := index (.Values.perService | default dict) .Release.Name | default dict }}
 {{- $secretEnv := $override.secretEnv | default .Values.secretEnv }}
 {{- $rdsTls := and .Values.datasource.enabled (.Values.datasource.tls | default dict).enabled }}
+{{- $hardening := (.Values.hardening | default dict).enabled }}
+{{- $securityContext := .Values.securityContext }}
+{{- if $hardening }}
+{{- $securityContext = merge (dict "readOnlyRootFilesystem" true) .Values.securityContext }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +27,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: {{ include "petclinic-service.fullname" . }}
+      {{- if $hardening }}
+      # No pod calls the Kubernetes API (discovery is Eureka), PET-10.
+      automountServiceAccountToken: false
+      {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if or .Values.initContainers $rdsTls }}
@@ -32,7 +41,7 @@ spec:
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           command: ['sh', '-c', 'until wget -qO- {{ .url }}; do sleep 5; done']
           securityContext:
-            {{- toYaml $.Values.securityContext | nindent 12 }}
+            {{- toYaml $securityContext | nindent 12 }}
         {{- end }}
         {{- if $rdsTls }}
         # keytool imports one cert per call, so split the PEM bundle first.
@@ -52,7 +61,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml $securityContext | nindent 12 }}
           volumeMounts:
             - name: rds-ca
               mountPath: /rds-ca
@@ -109,18 +118,31 @@ spec:
             timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          {{- if $rdsTls }}
+            {{- toYaml $securityContext | nindent 12 }}
+          {{- if or $rdsTls $hardening }}
           volumeMounts:
+            {{- if $rdsTls }}
             - name: rds-truststore
               mountPath: /certs
               readOnly: true
+            {{- end }}
+            {{- if $hardening }}
+            # Writable /tmp for Tomcat/Netty work dirs and genai's vector store temp file.
+            - name: tmp
+              mountPath: /tmp
+            {{- end }}
           {{- end }}
-      {{- if $rdsTls }}
+      {{- if or $rdsTls $hardening }}
       volumes:
+        {{- if $rdsTls }}
         - name: rds-ca
           configMap:
             name: {{ include "petclinic-service.fullname" . }}-rds-ca
         - name: rds-truststore
           emptyDir: {}
+        {{- end }}
+        {{- if $hardening }}
+        - name: tmp
+          emptyDir: {}
+        {{- end }}
       {{- end }}
