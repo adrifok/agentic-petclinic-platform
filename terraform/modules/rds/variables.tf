@@ -119,3 +119,21 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_kms_key" {
+  description = "Create a customer-managed KMS key for RDS storage and the error log group (PET-8). Must be decided before the instance is created; changing it later forces replacement."
+  type        = bool
+  default     = false
+}
+
+variable "kms_deletion_window_days" {
+  description = "Waiting period before the RDS KMS key is deleted after terraform destroy."
+  type        = number
+  default     = 30
+}
+
+variable "app_db_users" {
+  description = "Services that get their own MySQL user and Secrets Manager secret petclinic/{env}/db-<name> (PET-8)."
+  type        = list(string)
+  default     = []
+}

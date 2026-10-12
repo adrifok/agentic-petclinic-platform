@@ -60,6 +60,10 @@ module "rds" {
   secret_recovery_window_days = var.secret_recovery_window_days
   skip_final_snapshot         = var.rds_skip_final_snapshot
   deletion_protection         = var.rds_deletion_protection
+
+  create_kms_key           = true
+  kms_deletion_window_days = var.kms_deletion_window_days
+  app_db_users             = ["customers", "visits", "vets"]
 }
 
 # Implements PETPLAT-33 (non-RDS secrets). RDS credentials are created by the

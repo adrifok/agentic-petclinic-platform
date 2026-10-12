@@ -35,3 +35,13 @@ output "error_log_group_name" {
   description = "CloudWatch log group name for the RDS error log export."
   value       = aws_cloudwatch_log_group.rds_error.name
 }
+
+output "kms_key_arn" {
+  description = "ARN of the RDS customer-managed KMS key (null when create_kms_key = false)."
+  value       = local.kms_key_arn
+}
+
+output "app_secret_names" {
+  description = "Per-service DB credential secret names, keyed by service."
+  value       = { for k, v in aws_secretsmanager_secret.app : k => v.name }
+}
