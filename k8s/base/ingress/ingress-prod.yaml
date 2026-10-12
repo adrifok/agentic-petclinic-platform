@@ -1,0 +1,54 @@
+# Ingress: api-gateway (prod, PET-12)
+#
+# Prod counterpart of ingress.yaml. The AWS Load Balancer Controller builds an
+# internet-facing ALB from it; HTTP 80 redirects to HTTPS 443, TLS 1.2+ only.
+# All further routing is Spring Cloud Gateway inside api-gateway.
+#
+# Placeholders, refill before applying (PET-14):
+#   sed -e "s|<ACM_CERTIFICATE_ARN>|$(terraform -chdir=terraform/environments/prod output -raw dns_certificate_arn)|" \
+#       -e "s|<INGRESS_HOST>|$(terraform -chdir=terraform/environments/prod output -raw dns_record_name)|" \
+#       -e "s|<ALB_SECURITY_GROUP_ID>|$(terraform -chdir=terraform/environments/prod output -raw alb_sg_id)|" \
+#       k8s/base/ingress/ingress-prod.yaml | kubectl apply -f -
+#
+# Then point DNS at the ALB: set dns_create_alb_record = true plus
+# dns_alb_dns_name / dns_alb_zone_id in the prod terraform.tfvars and apply.
+#
+# The ALB uses the Terraform-managed ALB SG (80/443 from 0.0.0.0/0, the only
+# open ingress in the VPC). The node SG already allows that SG on 8080, so the
+# controller does not manage backend rules.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: petclinic-prod
+  labels:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: petclinic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: gateway
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: "<ACM_CERTIFICATE_ARN>"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    # Readiness, not the aggregate /actuator/health: one DOWN contributor
+    # (e.g. Eureka client) must not mark every target unhealthy.
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health/readiness
+    alb.ingress.kubernetes.io/healthcheck-port: "8080"
+    alb.ingress.kubernetes.io/security-groups: "<ALB_SECURITY_GROUP_ID>"
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
+spec:
+  ingressClassName: alb
+  rules:
+    - host: "<INGRESS_HOST>"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

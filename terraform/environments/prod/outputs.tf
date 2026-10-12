@@ -172,3 +172,13 @@ output "github_actions_role_arn" {
   description = "Prod CI role ARN for promote-images.yml; store as the AWS_PROD_PROMOTE_ROLE_ARN repo secret (PET-7)."
   value       = module.github_oidc.role_arn
 }
+
+output "dns_certificate_arn" {
+  description = "Prod ACM certificate ARN (petclinic.{domain_name}) for the prod Ingress certificate-arn annotation."
+  value       = module.dns.certificate_arn
+}
+
+output "dns_record_name" {
+  description = "Prod FQDN (petclinic.{domain_name}), the Ingress host and alias record name."
+  value       = module.dns.record_name
+}

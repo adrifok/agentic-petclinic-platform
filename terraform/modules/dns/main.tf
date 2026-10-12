@@ -1,6 +1,6 @@
 # Module: dns
-# Route 53 hosted zone and a DNS-validated ACM wildcard certificate for the
-# API Gateway ingress, plus (optionally) the Route 53 alias record pointing
+# Route 53 hosted zone and a DNS-validated ACM certificate (dev: wildcard,
+# prod: exact host) for the API Gateway ingress, plus (optionally) the Route 53 alias record pointing
 # at the ALB once it exists.
 #
 # Implements PETPLAT-28 (hosted zone + certificate) and PETPLAT-31 (ALB alias
@@ -60,17 +60,21 @@ data "aws_route53_zone" "existing" {
 }
 
 # ---------------------------------------------------------------------------
-# ACM certificate — wildcard, DNS-validated (PETPLAT-28)
+# ACM certificate — DNS-validated (PETPLAT-28, PET-12)
 #
-# A single "*.{domain}" wildcard covers both the dev (petclinic-dev.{domain})
-# and prod (petclinic.{domain}) records without per-environment SANs. Region
+# Dev: "*.{domain}" wildcard. Prod: exact host petclinic.{domain}, so each env
+# owns a separate validation record in the shared zone (see below). Region
 # matches the provider's (eu-central-1, same as the ALB) — this is a
 # regional cert for ALB listeners, not a CloudFront cert, so it does not need
 # us-east-1.
 # ---------------------------------------------------------------------------
 
+# Prod gets a cert for its exact host, not the wildcard: ACM reuses the same
+# validation CNAME for the same domain name, so a shared wildcard would put
+# one Route 53 record in both env states (allow_overwrite), and a dev destroy
+# would delete the record prod's renewal needs (PET-12).
 resource "aws_acm_certificate" "this" {
-  domain_name       = "*.${var.domain_name}"
+  domain_name       = var.environment == "prod" ? local.record_name : "*.${var.domain_name}"
   validation_method = "DNS"
 
   tags = merge(var.tags, {

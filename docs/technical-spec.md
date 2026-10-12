@@ -472,7 +472,7 @@ spec:
 
 | Parameter | Value |
 |-----------|-------|
-| Domain | `*.{domain}` (wildcard) |
+| Domain | dev: `*.{domain}` (wildcard); prod: `petclinic.{domain}` (exact host, own validation record in the shared zone, PET-12) |
 | Validation Method | DNS (Route 53) |
 | Region | `eu-central-1` (same as ALB) |
 
@@ -502,7 +502,7 @@ alb.ingress.kubernetes.io/target-type: ip
 alb.ingress.kubernetes.io/certificate-arn: "{acm-certificate-arn}"
 alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
 alb.ingress.kubernetes.io/ssl-redirect: "443"
-alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+alb.ingress.kubernetes.io/healthcheck-path: /actuator/health            # prod: /actuator/health/readiness (PET-12)
 alb.ingress.kubernetes.io/healthcheck-port: "8080"
 ```
 
