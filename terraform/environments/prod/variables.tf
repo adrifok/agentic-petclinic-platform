@@ -89,9 +89,13 @@ variable "eks_node_capacity_type" {
 }
 
 variable "eks_cluster_endpoint_public_access_cidrs" {
-  description = "CIDRs allowed to reach the prod EKS public API endpoint. Restrict to known IPs (office/VPN) before going live — defaults open per ADR-0001's all-public design, but prod should not stay on the wide-open default."
+  description = "CIDRs allowed to reach the prod EKS public API endpoint (operator IPs, e.g. [\"203.0.113.10/32\"]). Required, no default; prefixes wider than /24 are rejected (PET-6). Nodes and pods use the private endpoint, so this only gates operator kubectl/helm scripts from outside the VPC (prod Terraform has no kubernetes/helm provider)."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+
+  validation {
+    condition     = length(var.eks_cluster_endpoint_public_access_cidrs) > 0 && alltrue([for c in var.eks_cluster_endpoint_public_access_cidrs : can(cidrhost(c, 0)) && try(tonumber(split("/", c)[1]) >= 24, false)])
+    error_message = "eks_cluster_endpoint_public_access_cidrs must be a non-empty list of valid CIDRs, each /24 or narrower (0.0.0.0/0 and other wide ranges are rejected)."
+  }
 }
 
 variable "eks_cluster_log_retention_days" {

@@ -63,9 +63,8 @@ variable "node_sg_id" {
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "CIDRs allowed to reach the public API server endpoint. Restrict to known IPs where possible; defaults to open for a learning environment."
+  description = "CIDRs allowed to reach the public API server endpoint. No default: every caller must choose explicitly (prod rejects 0.0.0.0/0, PET-6)."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
 }
 
 # --- Managed node group ---

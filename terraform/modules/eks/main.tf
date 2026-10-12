@@ -169,9 +169,12 @@ resource "aws_eks_cluster" "this" {
   version  = var.cluster_version
 
   vpc_config {
-    subnet_ids              = var.subnet_ids
-    security_group_ids      = [var.cluster_sg_id]
-    endpoint_private_access = false
+    subnet_ids         = var.subnet_ids
+    security_group_ids = [var.cluster_sg_id]
+    # Private access keeps node/pod -> API traffic inside the VPC, so the
+    # public endpoint can be narrowed to operator IPs without nodes losing
+    # the ability to join (PET-6).
+    endpoint_private_access = true
     endpoint_public_access  = true
     public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
   }
@@ -201,6 +204,13 @@ resource "aws_eks_cluster" "this" {
     aws_iam_role_policy_attachment.cluster_policy,
     aws_cloudwatch_log_group.cluster,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = var.environment != "prod" || !contains(var.cluster_endpoint_public_access_cidrs, "0.0.0.0/0")
+      error_message = "Prod EKS public endpoint must not be open to 0.0.0.0/0 (PET-6). Set operator /32 CIDRs."
+    }
+  }
 }
 
 # ---------------------------------------------------------------------------
