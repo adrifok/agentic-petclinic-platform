@@ -1,0 +1,106 @@
+# Promote images dev ECR -> prod ECR (PET-7)
+#
+# Prod images are never rebuilt: this copies the exact image (same digest)
+# that was built and Trivy-scanned in dev, for the tag currently in
+# helm-values/{service}.yaml. Prod repos are IMMUTABLE, so a tag that already
+# exists in prod is skipped, never overwritten. No kubectl / cluster access;
+# ArgoCD prod sync stays manual.
+#
+# Needs repo secret AWS_PROD_PROMOTE_ROLE_ARN
+# (terraform -chdir=terraform/environments/prod output -raw github_actions_role_arn).
+# The role only trusts runs on main.
+name: promote-images
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Space-separated services to promote (empty = all 8)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: promote-images
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout platform repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Input goes through env, never inline ${{ }} in run:.
+      - name: Resolve services and tags
+        id: plan
+        env:
+          SERVICES_INPUT: ${{ inputs.services }}
+        run: |
+          set -euo pipefail -f
+          all_services="config-server discovery-server api-gateway customers-service visits-service vets-service genai-service admin-server"
+          services="${SERVICES_INPUT:-$all_services}"
+          [[ -z "${services// /}" ]] && services="${all_services}"
+
+          pairs=""
+          for s in ${services}; do
+            if [[ " ${all_services} " != *" ${s} "* ]]; then
+              echo "::error::unknown service: ${s}"
+              exit 1
+            fi
+            tag="$(awk '/^image:/{f=1;next} f && /^[^ ]/{f=0} f && $1=="tag:"{print $2; exit}' "helm-values/${s}.yaml")"
+            if [[ ! "${tag}" =~ ^[0-9a-f]{7,40}$ ]]; then
+              echo "::error::${s}: image.tag '${tag}' is not a commit SHA"
+              exit 1
+            fi
+            pairs+="${s}=${tag} "
+          done
+          echo "pairs=${pairs% }" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_PROMOTE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Copy images dev -> prod
+        env:
+          PAIRS: ${{ steps.plan.outputs.pairs }}
+        run: |
+          set -euo pipefail
+          docker buildx version
+          account="$(aws sts get-caller-identity --query Account --output text)"
+          registry="${account}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${registry}"
+          trap 'docker logout "${registry}" >/dev/null' EXIT
+
+          digest() { aws ecr describe-images --region "${AWS_REGION}" --repository-name "$1" --image-ids imageTag="$2" --query 'imageDetails[0].imageDigest' --output text 2>&1; }
+
+          for pair in ${PAIRS}; do
+            s="${pair%%=*}"
+            tag="${pair#*=}"
+            dev_digest="$(digest "petclinic-dev/${s}" "${tag}")" || { echo "::error::${s}:${tag} not readable in dev ECR: ${dev_digest}"; exit 1; }
+
+            # Only ImageNotFoundException means "not promoted yet"; any other error stops the run.
+            if prod_digest="$(digest "petclinic-prod/${s}" "${tag}")"; then
+              if [[ "${prod_digest}" != "${dev_digest}" ]]; then
+                echo "::error::${s}:${tag} exists in prod with digest ${prod_digest}, dev has ${dev_digest}"
+                exit 1
+              fi
+              echo "${s}:${tag} already in prod (same digest), skipping"
+              continue
+            elif ! grep -q ImageNotFoundException <<< "${prod_digest}"; then
+              echo "::error::describe-images failed for petclinic-prod/${s}:${tag}: ${prod_digest}"
+              exit 1
+            fi
+
+            echo "promoting ${s}:${tag} (${dev_digest})"
+            docker buildx imagetools create --tag "${registry}/petclinic-prod/${s}:${tag}" "${registry}/petclinic-dev/${s}@${dev_digest}"
+          done

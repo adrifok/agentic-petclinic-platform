@@ -162,3 +162,13 @@ output "karpenter_instance_profile_name" {
   description = "prod instance profile for Karpenter-launched nodes (EC2NodeClass spec.instanceProfile)."
   value       = module.karpenter.karpenter_instance_profile_name
 }
+
+output "ecr_repository_urls" {
+  description = "Prod ECR repository URLs, keyed by service."
+  value       = module.ecr.repository_urls
+}
+
+output "github_actions_role_arn" {
+  description = "Prod CI role ARN for promote-images.yml; store as the AWS_PROD_PROMOTE_ROLE_ARN repo secret (PET-7)."
+  value       = module.github_oidc.role_arn
+}

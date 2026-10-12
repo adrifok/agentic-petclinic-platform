@@ -102,6 +102,12 @@ variable "ecr_repository_arns" {
   }
 }
 
+variable "ecr_pull_repository_arns" {
+  description = "ECR repository ARNs the role may read from, e.g. dev repos when promoting images to prod (PET-7). Empty = push-only role."
+  type        = list(string)
+  default     = []
+}
+
 variable "max_session_duration" {
   description = "Maximum role session duration in seconds."
   type        = number

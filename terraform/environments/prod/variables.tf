@@ -197,3 +197,42 @@ variable "budget_alert_email" {
     error_message = "budget_alert_email must be a valid email address."
   }
 }
+
+variable "ecr_service_names" {
+  description = "Microservice names for prod ECR repositories, one repo each under petclinic-prod/ (same list as dev, so promotion has a source repo for each)."
+  type        = list(string)
+  default = [
+    "config-server",
+    "discovery-server",
+    "api-gateway",
+    "customers-service",
+    "visits-service",
+    "vets-service",
+    "genai-service",
+    "admin-server",
+  ]
+}
+
+variable "github_owner" {
+  description = "GitHub user owning the platform repo."
+  type        = string
+  default     = "adrifok"
+}
+
+variable "github_owner_id" {
+  description = "Numeric GitHub account ID of github_owner, for immutable OIDC subject claims. gh api users/adrifok -q .id"
+  type        = string
+  default     = "97637423"
+}
+
+variable "github_platform_repo" {
+  description = "Platform repo whose promote-images workflow may assume the prod CI role (PET-7)."
+  type        = string
+  default     = "agentic-petclinic-platform"
+}
+
+variable "github_platform_repo_id" {
+  description = "Numeric repository ID of the platform repo, for immutable OIDC subject claims. gh api repos/adrifok/agentic-petclinic-platform -q .id"
+  type        = string
+  default     = "1355981888"
+}

@@ -101,6 +101,24 @@ data "aws_iam_policy_document" "ecr_push" {
     ]
     resources = var.ecr_repository_arns
   }
+
+  # Promotion (PET-7) copies an existing image from the source repos into
+  # the push repos, so it reads both. Absent when ecr_pull_repository_arns
+  # is empty (dev build role).
+  dynamic "statement" {
+    for_each = length(var.ecr_pull_repository_arns) > 0 ? [1] : []
+    content {
+      sid    = "EcrReadForPromotion"
+      effect = "Allow"
+      actions = [
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:DescribeImages",
+      ]
+      resources = concat(var.ecr_pull_repository_arns, var.ecr_repository_arns)
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "ecr_push" {
