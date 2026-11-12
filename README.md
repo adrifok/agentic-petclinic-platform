@@ -1,4 +1,4 @@
-# Petclinic Platform — AWS Infrastructure
+# Petclinic Platform Agentic workflow — AWS Infrastructure
 All infrastruvcture code in this repo was written with Claude Code. Every Terraform module, manifest and pipeline was reviewed, validate with Terrafrom plan and kubectl dry-run and corrected before applying. 
 Built a complete observability stack: Prometheus, Grafana, FluentBit, Loki, Zipkin with per service dashboard,log aggregation, dsitributed tracing and alerting rules across eight services.      
 
