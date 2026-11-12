@@ -1,5 +1,5 @@
 # Petclinic Platform — AWS Infrastructure
-
+All infrastruvcture code in this repo was written with Claude Code. Every Terraform module, manifest and pipeline was reviewed, validate with Terrafrom plan and kubectl dry-run and corrected before applying.
 Production AWS infrastructure for [Spring Petclinic Microservices](https://github.com/spring-petclinic/spring-petclinic-microservices) (8 services, Spring Boot, Spring Cloud).
 
 ## Repository Structure
