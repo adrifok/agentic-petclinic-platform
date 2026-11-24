@@ -1,99 +1,74 @@
-# Petclinic Platform Agentic workflow — AWS Infrastructure
-All infrastruvcture code in this repo was written with Claude Code. Every Terraform module, manifest and pipeline was reviewed, validate with Terrafrom plan and kubectl dry-run and corrected before applying. 
-Built a complete observability stack: Prometheus, Grafana, FluentBit, Loki, Zipkin with per service dashboard,log aggregation, dsitributed tracing and alerting rules across eight services.      
+agentic-petclinic-platform
 
-Production AWS infrastructure for [Spring Petclinic Microservices](https://github.com/spring-petclinic/spring-petclinic-microservices) (8 services, Spring Boot, Spring Cloud).
+AWS platform for Spring Petclinic Microservices (8 Spring Boot services, one of them a GenAI service), built with Terraform, EKS, Helm and ArgoCD.
 
-## Repository Structure
+The app is the open source spring-petclinic-microservices project. The platform around it is mine, and I built it with Claude Code as a working partner. Every Terraform module, manifest and pipeline it wrote went through terraform plan or kubectl dry-run and a review before anything was applied.
 
-```
-petclinic-platform/
-│
-├── terraform/                    # Infrastructure as Code
-│   ├── environments/
-│   │   ├── dev/                  # Dev environment root module
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   ├── outputs.tf
-│   │   │   ├── backend.tf        # S3 state: petclinic/dev/terraform.tfstate
-│   │   │   └── terraform.tfvars
-│   │   └── prod/                 # Prod environment root module
-│   │       ├── main.tf
-│   │       ├── variables.tf
-│   │       ├── outputs.tf
-│   │       ├── backend.tf        # S3 state: petclinic/prod/terraform.tfstate
-│   │       └── terraform.tfvars
-│   └── modules/                  # Reusable modules
-│       ├── vpc/                  # VPC, subnets, IGW, security groups (all-public, no NAT)
-│       ├── eks/                  # EKS cluster, node groups, OIDC, IAM
-│       ├── ecr/                  # ECR repos (per service per env), lifecycle policies
-│       ├── rds/                  # RDS MySQL, subnet group, parameter group
-│       ├── dns/                  # Route 53, ACM certificates
-│       ├── secrets/              # Secrets Manager resources
-│       └── observability/        # Prometheus, Grafana, CloudWatch, FluentBit
-│
-├── k8s/                          # Kubernetes Manifests
-│   ├── base/                     # Base manifests (shared across envs)
-│   │   ├── namespaces.yaml
-│   │   ├── config-server/        # Deployment, Service, ConfigMap
-│   │   ├── discovery-server/
-│   │   ├── api-gateway/
-│   │   ├── customers-service/
-│   │   ├── visits-service/
-│   │   ├── vets-service/
-│   │   ├── genai-service/
-│   │   ├── admin-server/
-│   │   ├── ingress/              # ALB Ingress Controller config
-│   │   └── external-secrets/     # ExternalSecret resources (AWS Secrets Manager)
-│   └── overlays/                 # Environment-specific patches
-│       ├── dev/                  # Dev: fewer replicas, smaller resources
-│       └── prod/                 # Prod: more replicas, larger resources, HPA
-│
-├── helm/                            # Helm Charts
-│   └── petclinic-service/           # Generic chart (shared by all 8 services)
-│
-├── helm-values/                     # Per-service YAML + per-env (dev.yaml, prod.yaml)
-│
-├── .github/workflows/            # CI (GitHub Actions — ArgoCD handles CD)
-│   ├── build-push.yml            # Build images, push to ECR
-│   └── update-image-tags.yml     # Commit image tag updates → ArgoCD deploys
-│
-├── scripts/                      # Operational scripts
-│   ├── bootstrap-state.sh        # Create S3 bucket + DynamoDB for TF state
-│   └── ecr-login.sh              # ECR authentication helper
-│
-└── docs/                         # Operational Documentation
-    ├── architecture.md           # Infrastructure architecture & diagrams
-    ├── runbook.md                # Day-2 operations (restart, scale, rollback)
-    ├── incident-playbook.md      # Common failures & fixes
-    ├── onboarding.md             # New engineer setup guide
-    └── adr/                      # Architecture Decision Records
-        └── 0001-public-subnets.md  # All-public subnet design decision
-```
 
-## Tech Stack
+How I worked with Claude Code
 
-| Layer | Tool | Details |
-|-------|------|---------|
-| Cloud | AWS | eu-central-1 |
-| IaC | Terraform >= 1.6 | AWS provider ~> 5.0, S3 + DynamoDB state |
-| Cluster | Amazon EKS | Managed node groups, OIDC |
-| Registry | Amazon ECR | One repo per service per env, lifecycle policies, scan-on-push |
-| Database | Amazon RDS MySQL | Single-AZ both envs (cost optimization) |
-| DNS | Route 53 + ACM | TLS termination at ALB |
-| Secrets | AWS Secrets Manager | External Secrets Operator in K8s |
-| Ingress | AWS ALB Ingress Controller | Public ALB → API Gateway service |
-| Observability | Prometheus + Grafana | Micrometer metrics, dashboards, alerts |
-| Logging | FluentBit + CloudWatch | Centralized log aggregation |
-| Tracing | Zipkin | Distributed tracing (OpenTelemetry) |
-| CI | GitHub Actions | OIDC → AWS, build → push ECR → commit image tag |
-| CD | ArgoCD | GitOps — watches Git, auto-sync (dev), manual sync (prod) |
-| Packaging | Helm | Generic chart, per-service + per-env values |
-| Node Scaling | Karpenter | NodePools, EC2NodeClass, Spot diversification |
+  MCP servers give the agent real context instead of guesses:
+    terraform-mcp-server      Terraform registry docs and provider schemas
+    aws-knowledge-mcp         AWS documentation
+    aws-pricing-mcp-server    cost estimates before choosing a resource
+    context7                  current library docs
+    atlassian                 Jira tickets, so each branch and PR maps to a PET issue
 
-## Environments
+  Six review agents, each with one job: terraform-reviewer, k8s-validator, pipeline-reviewer, security-auditor, cost-reviewer, doc-reviewer. The agent that writes the code is never the one that grades it.
 
-| Environment | K8s Namespace | RDS | Purpose |
-|-------------|---------------|-----|---------|
-| dev | `petclinic-dev` | db.t4g.micro, single-AZ (free tier) | Development & testing |
-| prod | `petclinic-prod` | db.t4g.micro, single-AZ (free tier) | Production |
+  Skills for repeatable tasks: terraform-plan, terraform-apply, deploy-dev, deploy-prod, rollback, smoke-test, security-scan, logs.
+
+  Hooks that run before every command, no matter what the model decides:
+    block terraform destroy, including through the Terraform MCP server
+    block dangerous rm commands
+    block commits that contain secrets
+    warn when apply runs without a plan
+  The hooks have their own test suite: 122 cases in .claude/hooks/tests, run with run-hook-tests.sh.
+
+  Rules per area (Terraform, Kubernetes, Helm, pipelines, docs) live in .claude/rules.
+
+
+The platform
+
+  Region       eu-central-1, two environments (dev and prod) with separate Terraform state in S3 and DynamoDB locking
+  Network      VPC with public subnets only, no NAT gateway, to keep costs down
+  Cluster      EKS with managed node groups and Karpenter for node scaling (Spot in dev, on-demand Graviton in prod)
+  Images       ECR, one repo per service per environment, scan on push
+  Database     RDS MySQL, db.t4g.micro single-AZ
+  Secrets      AWS Secrets Manager, pulled into the cluster by External Secrets Operator
+  Ingress      AWS Load Balancer Controller, TLS with ACM, DNS in Route 53
+  Delivery     ARM64 images are built and scanned with Trivy in dev. update-image-tags.yml commits the new tag to Git and ArgoCD picks it up. promote-images.yml copies the exact same image (same digest) to the immutable prod repos over OIDC, with no AWS keys and no cluster access. Auto-sync in dev, manual sync in prod.
+  Packaging    one generic Helm chart for all 8 services, values per service and per environment
+  Security     default-deny NetworkPolicy in prod
+
+
+Observability
+
+  Prometheus and Alertmanager for metrics and alerting rules, Grafana with a dashboard per service, FluentBit and Loki for logs, Zipkin for distributed tracing across the 8 services.
+
+
+Repository layout
+
+  terraform/modules         vpc, eks, karpenter, ecr, rds, dns, secrets, github-oidc, observability
+  terraform/environments    dev and prod root modules
+  k8s/base                  namespaces, ingress, external secrets, Karpenter, network policies, observability, DB bootstrap
+  k8s/argocd                ArgoCD install, projects, RBAC and applications per environment
+  helm/petclinic-service    the shared chart
+  helm-values               one file per service, plus dev.yaml and prod.yaml
+  .github/workflows         promote-images.yml, update-image-tags.yml
+  scripts                   state bootstrap, ECR login, image build, start and stop env, Helm validation
+  docs                      technical spec, Helm guide, rollback runbook, Jira backlog
+  docs/runbooks             EKS access, ECR build and push, network policies, pod security, prod bootstrap, RDS init
+  .claude                   agents, skills, hooks, rules and settings
+
+
+Trade-offs I chose on purpose
+
+  Public subnets and no NAT gateway: cheaper for a portfolio project, but nodes get public IPs. In production the nodes would go to private subnets behind a NAT.
+
+  Single-AZ RDS on the smallest instance, in both environments: fine for a demo, not for real traffic.
+
+
+Costs
+
+  EKS, RDS and the load balancer bill by the hour. scripts/stop-env.sh stops RDS and scales the nodes to zero when I'm not using the environment. The EKS control plane keeps running and billing (about 3.30 USD a day), so a long pause still needs terraform destroy.
